@@ -1,0 +1,7 @@
+{
+	"instance"      : "data/generator/inputs/herman7.pm",
+	"prismConstants": {},
+	"nbParams"      : [5, 15, 30],
+	"probaInterval" : [0.02, 0.06, 0.1],
+	"probaParameter": [0.06, 0.12, 0.18]
+}

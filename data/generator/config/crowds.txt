@@ -1,0 +1,11 @@
+{
+	"instance"      : "data/generator/inputs/crowds.pm",
+	"prismConstants": 
+	{
+		"CrowdSize" : [5, 10],
+		"TotalRuns" : [3]
+	},
+	"nbParams"      : [5, 15, 30],
+	"probaInterval" : [0.1, 0.2, 0.3],
+	"probaParameter": [0.02, 0.04, 0.06]
+}

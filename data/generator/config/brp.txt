@@ -1,0 +1,11 @@
+{
+	"instance"      : "data/generator/inputs/brp.pm",
+	"prismConstants": 
+	{
+		"N" : [16, 32],
+		"MAX" : [3, 4]
+	},
+	"nbParams"      : [2, 5, 10],
+	"probaInterval" : [0.02, 0.05, 0.1],
+	"probaParameter": [0.05, 0.1, 0.2]
+}
