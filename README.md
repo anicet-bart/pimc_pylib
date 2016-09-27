@@ -1,8 +1,20 @@
 # pimc_pylib
-Python library for Parametric Interval Markov Chains (PIMC) manipulation.
+pimc_pylib is the Python library for Parametric Interval Markov Chains (PIMC) manipulation.
 This library allows to: 
 * generate PIMCs from MCs (see. Section PIMC generator)
 * generate CSP models for PIMC verification (see. Section PIMC modeler)
+
+## Installation
+- Python 2 or Python 3 is required
+- [PRISM](http://www.prismmodelchecker.org) is required for using PIMC generator
+- Edit the ```config.ini``` file to set the location of your PRISM executable/binary.
+
+## Run
+Launch Python scripts ```pimc_generator``` and ```pimc_modeler``` in the ```src``` folder to run respectively the PIMC generator and the PIMC modeler. Both commands have the ```-h``` for printing help and usage.
+```console
+> src/pimc_generator [-h] <config_file> [-o <output_directory>]
+> src/pimc_modeler [-h] -i <pimc_file> [-smt | -milp | -vmcai16] [r | d] -o <output_file> 
+```
 
 ## PIMC generator
 The PIMC generator transform a Discrete Time Markov Chain (MC for short) to a Parametric Interval Markov Chains. The scrip takes one configuration file as argument. The configuration must be written in the JSON format. It contains the location file of the MC to consider and how many parameters and intervals must be added from the MC to generate a PIMC. The MC file must written in the [PRISM language](http://www.prismmodelchecker.org/). In order to generate a PIMC, the 4 following values must be set in the generator configuration input file:
@@ -29,8 +41,6 @@ The following configuration file will generate 12 PIMCs:
 }
 ```
 
-
-
-Warning: the library needs to call PRISM. Do not forget to set the location of your PRISM directory in the configuration file config.ini
+**Warning:** do not forget to set the location of your PRISM executable in the ```config.ini``` file.
 
 ## PIMC modeler
