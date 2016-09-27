@@ -14,33 +14,18 @@ The PIMC generator transform a Discrete Time Markov Chain (MC for short) to a Pa
 
 The values associated to the keys can be either one value or a list of values. In the case of a list of values, the PIMC generator will consider all the possible combinaisons of values between all the keys. Some examples of configuration files for PIMC generation cand be found in [data/generator/config](https://github.com/anicet-bart/pimc_pylib/tree/master/data/generator/config). Some examples of PRISM files can be found in [data/generator/inputs](https://github.com/anicet-bart/pimc_pylib/tree/master/data/generator/inputs) (from [PRISM benchmarks](http://www.prismmodelchecker.org/benchmarks/models.php#dtmcs)).
 
-Example 1: the following configuration file will generate one PIMC:
-```json
-{
-	"prismFile"     : "data/generator/inputs/brp.pm",
-	"prismConstants": 
-	{
-		"N" : 16,
-		"MAX" : 3
-	},
-	"nbParameters"   : 5,
-	"ratioIntervals" : 0.2,
-	"ratioParameters": 0.1
-}
-```
-
-Example 2: the following configuration file will generate 16 PIMCs:
+The following configuration file will generate 12 PIMCs:
 ```json
 {
 	"prismFile"     : "data/generator/inputs/brp.pm",
 	"prismConstants": 
 	{
 		"N" : [16, 32],
-		"MAX" : [3, 4]
+		"MAX" : 4
 	},
 	"nbParameters"   : [2, 5], 
 	"ratioIntervals" : 0.2,
-	"ratioParameters": [0.05, 0.1]
+	"ratioParameters": [0.05, 0.1, 0.2]
 }
 ```
 
