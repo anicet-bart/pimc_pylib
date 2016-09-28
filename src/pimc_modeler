@@ -28,19 +28,24 @@ parser = argparse.ArgumentParser("Existencial Consistency")
 parser.add_argument('-i', metavar='<pimc_file>', help='input file containing the pIMC', required=True)
 parser.add_argument('-o', metavar='<output_file>', help='output file for printing the translation', required=True)
 
-parser.add_argument("-r", action = "store_true", dest='useFractions', help="use rational numbers")
-parser.add_argument("-d", action = "store_false", dest='useFractions', help="use double/float numbers")
-parser.add_argument("-smt", action = "store_true", help="perform MILP modeling", default=False)
-parser.add_argument("-milp", action = "store_true", help="perform MILP modeling", default=False)
+group = parser.add_mutually_exclusive_group()
+group.add_argument("-r", action = "store_true", dest='useFractions', help="use rational numbers")
+group.add_argument("-d", action = "store_false", dest='useFractions', help="use double/float numbers")
+
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument("-smt", action = "store_true", help="perform SMT modelling", default=False)
+group.add_argument("-milp", action = "store_true", help="perform MILP modelling", default=False)
+group.add_argument("-vmcai16", action = "store_true", default=False, help="perform VMCAI16 modelling in SMT")
+
 parser.add_argument('-semiCont', help='use semi-continuous variables', action="store_true", default=False)
-parser.add_argument("-dot", action = "store_true", help="perform .dot  double/float numbers", default=False)
-parser.add_argument('-sol', metavar='<labelling_file>', help='solution input file', default="")
-parser.add_argument("-vmcai16", action = "store_true", default=False, help="use VMCAI16 modelling")
+
+#parser.add_argument("-dot", action = "store_true", help="perform .dot  double/float numbers", default=False)
+#parser.add_argument('-sol', metavar='<labelling_file>', help='solution input file', default="")
 args = parser.parse_args()
 
 file = args.i
-dotFile = args.dot
-solFile = args.sol
+dotFile = False #args.dot
+solFile = ""    #args.sol
 
 # Loadding pIMC
 utils.printTitle("Loading pIMC")

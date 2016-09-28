@@ -107,8 +107,8 @@ class ModelerVMCAI16(object):
                 result = Conjunction(name=name, constraints=self.LC(state, pimc.getSuccessors(state), pimc))
             else:  
                 result = Disjunction(name=name, constraints=[])
-                for states in utils.powersetSet(self.withZero(state, pimc)):
-                    result.addConstraint(self.nConsistencyLocal(state, states, n, pimc))
+                for states in utils.powerset(list(self.withZero(state, pimc))):
+                    result.addConstraint(self.nConsistencyLocal(state, set(states), n, pimc))
             
             eqVariable = BooleanVariable("EqVar"+name)
             equivalence = Equivalence(name="Eq"+name, left=eqVariable, right=result)
@@ -127,56 +127,4 @@ class ModelerVMCAI16(object):
         result['constraints'] = constraints
         result['contVars'] = pimc.getParameters()
         result['boolVars'] = [self.nConsistencies[elt]['eqVariable'] for elt in self.nConsistencies]
-        return result
-
-
-    def nReachabilityLocal(self, state, localStates, goalStates, n, pimc):
-        name = "Reach_%s(%s,X=%s,G=%s)" % (n, state, list(localStates), list(goalStates))
-        result = Conjunction(name=name, constraints=[])
-        
-        result.addConstraint(self.nConsistencyLocal(state, localStates, pimc.nbStates() ,pimc))
-        if state in goalStates:
-            isStateInGoal = Inequation.tautology()
-        else:
-            isStateInGoal = Inequation.contradiction()
-
-        if n == 0:
-            result.addConstraint(isStateInGoal)
-        else:  
-            innerDisjunction = Disjunction(constraints=[])
-            innerDisjunction.addConstraint(isStateInGoal)
-            for sPrime in (pimc.getSuccessors(state) - localStates):
-                innerConjunction = Conjunction(constraints=[])
-                innerConjunction.addConstraint(self.nReachability(sPrime, goalStates, n-1, pimc))
-                
-                # pimc.up(state, s') > 0
-                constraint = Inequation(">", pimc.getParameters())
-                constraint.addLHS(pimc.up(state, sPrime))
-                innerConjunction.addConstraint(constraint)
-                
-                # \Sigma{ pimc.low(state, s'') < 1 }
-                constraint = Inequation("<", pimc.getParameters())
-                for sSecond in pimc.getStates():
-                    if sSecond != sPrime:
-                        constraint.addLHS(pimc.low(state, sSecond))
-                constraint.addRHS(1)
-                innerConjunction.addConstraint(constraint)
-                
-                innerDisjunction.addConstraint(innerConjunction)
-            result.addConstraint(innerDisjunction)
-        return result    
-        
-    def nReachability(self, state, goalStates, n, pimc):
-        name = "Reach_%s(%s,G=%s)" % (n, state, list(goalStates))
-        result = Disjunction(name=name, constraints=[])      
-        
-        for states in utils.powersetSet(self.withZero(state, pimc)):
-            result.addConstraint(self.nReachabilityLocal(state, states, goalStates, n, pimc))
-        return result  
-
-    def reachability(self, state, goalStates, n, pimc):
-        result = Conjunction(constraints=[])
-        result.addConstraint(self.nReachability(state, goalStates, n, pimc))
-        for elt in self.nConsistencies:
-            result.addConstraint(self.nConsistencies[elt]['equivalence'])
         return result
