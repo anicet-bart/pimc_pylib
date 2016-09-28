@@ -12,7 +12,7 @@ This library allows to:
 ## Run
 Launch Python scripts ```pimc_generator``` and ```pimc_modeler``` in the ```src``` folder to run respectively the PIMC generator and the PIMC modeler. Both commands have the ```-h``` option for printing help and usage.
 ```console
-> src/pimc_generator [-h] <config_file> [-o <output_directory>]
+> src/pimc_generator [-h] <generation_file> [-o <output_directory>]
 > src/pimc_modeler [-h] -i <pimc_file> [-smt | -milp | -vmcai16] [r | d] -o <output_file> 
 ```
 
