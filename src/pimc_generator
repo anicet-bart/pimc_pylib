@@ -1,4 +1,21 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
+# PIMC_PYLIB: the Python Library for Parametric Interval Markov Chains Verification
+# Copyright (C) 2016 Ecole des Mines de Nantes
+# Author: Anicet BART
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # PRISM file to pIMC file
 import json
@@ -8,7 +25,9 @@ import os
 import subprocess
 import samples.utils as utils
 
-parser = argparse.ArgumentParser(description="PIMC_PYLIB Generator [version 0.9]. Copyright (c) 2016 Ecole des Mines de Nantes", epilog="More details at https://github.com/anicet-bart/pimc_pylib", formatter_class=argparse.RawTextHelpFormatter)
+parser = argparse.ArgumentParser(
+	description="PIMC_PYLIB Generator [version 0.9]. Copyright (c) 2016 Ecole des Mines de Nantes", 
+	epilog="More details at https://github.com/anicet-bart/pimc_pylib", formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('c', metavar='<generation_file>', help='Input file for PIMC generation (see README for format)')
 parser.add_argument('-o', metavar='<output_directory>', help='output directory', default="")
 args = parser.parse_args()
