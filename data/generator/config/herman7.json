@@ -1,0 +1,7 @@
+{
+	"prismFile"      : "data/generator/inputs/herman7.pm",
+	"prismConstants": {},
+	"nbParameters"   : [5, 15, 30],
+	"ratioIntervals" : [0.02, 0.06, 0.1],
+	"ratioParameters": [0.06, 0.12, 0.18]
+}

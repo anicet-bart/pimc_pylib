@@ -5,6 +5,9 @@ Created on Fri May 20 15:28:11 2016
 @author: Anicet
 """
 
+import json
+import os
+
 def isInstance(variable, clazz):
     if (not isinstance(variable, clazz)):
         raise TypeError('Instance of %s insted of %s.' % (type(variable), clazz))
@@ -13,6 +16,11 @@ def isType(variable, tyype):
     if (type(variable) != tyype):
         raise TypeError('Variable with type %s insted of %s.' % (type(variable), tyype))
         
+def isList(variable):
+    return type(variable) is list
+
+def toList(variable):
+    return variable if isList(variable) else [variable]
 
 def powersetList(s):
     r = [[]]
@@ -42,6 +50,14 @@ def list_powerset2(lst):
 def powersetSet(s):
     return frozenset(map(frozenset, list_powerset(list(s))))
 
+def getPimcPylibDirectory():
+    return os.path.normpath(os.path.dirname(os.path.realpath(__file__)) + os.sep + ".." + os.sep + "..") + os.sep
+
+def getConfigIni():
+    configFile = open(getPimcPylibDirectory() + "config.ini", "r")
+    result = json.load(configFile)
+    configFile.close()
+    return result
 
 def printTitle(message, size=70):
     title = "=" * int(((size - len(message) - 2)/2)) + " " + message + " "

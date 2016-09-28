@@ -1,0 +1,105 @@
+#!/usr/bin/python
+
+# PRISM file to pIMC file
+import json
+import argparse
+import itertools
+import os
+import subprocess
+import samples.utils as utils
+
+parser = argparse.ArgumentParser(description="PIMC_PYLIB Generator [version 0.9]. Copyright (c) 2016 Ecole des Mines de Nantes", epilog="More details at https://github.com/anicet-bart/pimc_pylib", formatter_class=argparse.RawTextHelpFormatter)
+parser.add_argument('c', metavar='<generation_file>', help='Input file for PIMC generation (see README for format)')
+parser.add_argument('-o', metavar='<output_directory>', help='output directory', default="")
+args = parser.parse_args()
+
+
+def execute(cmd):
+	process = subprocess.Popen(cmd, shell=True)
+	result = process.wait()
+
+def getInitialStatFromLabelFile(prismLabelFile):
+	file = open(prismLabelFile)
+	# Read first line to get the key associated to the initial state
+	# 0="init" 1="deadlock"
+	header = file.readline()
+	header = {x.split("=")[0]:x.split("=")[1] for x in header.split()}
+	keyInitialState = ""
+	for key in header:
+		if header[key] == '\"init\"':
+			keyInitialState = key
+	assert(keyInitialState != "")
+
+	for line in file:
+		line = line.strip()
+		if line.endswith(keyInitialState):
+			return int(line.split(":")[0])
+
+
+# Check PRISM installation
+PIMC_PYLIB_DIRECTORY = utils.getPimcPylibDirectory()
+try:
+	configIni = utils.getConfigIni()
+	if not("prism" in configIni):
+		raise Exception("Missing key 'prism' in config.ini.")
+	if not(os.path.isfile(configIni['prism'])):
+		raise Exception("PRISM executable '%s' not found." % (configIni['prism']))
+except Exception as e:
+	print("Please check your configuration file config.ini at %s" % (PIMC_PYLIB_DIRECTORY))
+	print(e)
+	exit(1)
+
+PRISM = configIni['prism']
+TRA2PIMC = os.path.dirname(os.path.realpath(__file__)) + "/samples/mc2pimc.py"
+outdir = args.o
+if outdir == "":
+    outdir = os.path.normpath(PIMC_PYLIB_DIRECTORY + os.sep + os.path.join("data", "generator", "outputs", "tmp")) + os.sep
+
+# Read generation configuration file
+configFile = open(args.c, 'r')
+config = json.load(configFile)
+configFile.close()
+expectedKeys = ['prismFile', 'prismConstants', 'nbParameters', 'ratioIntervals', 'ratioParameters']
+for key in expectedKeys:
+	if not(key in config):
+		print("Please check your generation configuration file %s" % (args.c))
+		print('Missing key "%s".' % (key))
+		exit(2)
+
+prismFiles = utils.toList(config['prismFile'])
+constantNames  = config['prismConstants'].keys()
+constantValues = [utils.toList(config['prismConstants'][c]) for c in constantNames]
+nbParameters = utils.toList(config['nbParameters'])
+ratioIntervals = utils.toList(config['ratioIntervals'])
+ratioParameters = utils.toList(config['ratioParameters'])
+paramValues = [[str(i) for i in nbParameters], [str(i) for i in ratioIntervals], [str(i) for i in ratioParameters]]
+
+# PRIMS command
+pimcs = []
+for prismFile in prismFiles:
+	for constants in itertools.product(*constantValues):
+		consts  = ["%s_%s" % (constantNames[i], constants[i]) for i in range(len(constants))]
+		instanceName = os.path.splitext(os.path.basename(prismFile))[0]
+		benchname = outdir + os.sep + instanceName + "_" + "_".join(consts)
+		trafile = benchname + ".tra"
+
+		consts  = ["-const %s=%s" % (constantNames[i], constants[i]) for i in range(len(constants))]
+		cmd     = "%s %s %s -exportmodel %s" % (PRISM, prismFile, " ".join(consts), trafile + ",lab")
+		utils.printTitle("[begin] Running PRISM")
+		execute(cmd)
+		utils.printTitle("[end] Running PRISM")
+		print('')
+		# Read initial state from ".lab" file
+		initialState = getInitialStatFromLabelFile(benchname + ".lab")
+
+		# TRA2PIMC 
+		utils.printTitle("[begin] Generating PIMCs from PRISM tra and lab files")
+		for params in itertools.product(*paramValues):
+			pimcfile = os.path.normpath(benchname + "_" + "_".join(params) + ".pimc")
+			cmd = "python %s %s -o %s -p %s -ri %s -rp %s -init %s" % (TRA2PIMC, trafile, pimcfile, params[0], params[1], params[2], initialState)
+			execute(cmd)
+			pimcs.append(pimcfile)
+		utils.printTitle("[end] Generating PIMCs from PRISM tra and lab files")
+		print('')
+
+print("%s PIMC%s generated in directory '%s'." % (len(pimcs), "s" if len(pimcs) > 1 else "", outdir))

@@ -1,0 +1,11 @@
+{
+	"prismFile"      : "data/generator/inputs/nand.pm",
+	"prismConstants": 
+	{
+		"N" : [5, 10],
+		"K" : [1, 2]
+	},
+	"nbParameters"   : [50, 100, 250],
+	"ratioIntervals" : [0.05, 0.09, 0.12],
+	"ratioParameters": [0.1, 0.2, 0.4]
+}

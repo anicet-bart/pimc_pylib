@@ -1,0 +1,11 @@
+{
+	"prismFile"      : "data/generator/inputs/brp.pm",
+	"prismConstants": 
+	{
+		"N" : [16, 32],
+		"MAX" : [3, 4]
+	},
+	"nbParameters"   : [2, 5, 10],
+	"ratioIntervals" : [0.02, 0.05, 0.1],
+	"ratioParameters": [0.05, 0.1, 0.2]
+}

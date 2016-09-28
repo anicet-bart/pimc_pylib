@@ -1,0 +1,11 @@
+{
+	"prismFile"      : "data/generator/inputs/crowds.pm",
+	"prismConstants": 
+	{
+		"CrowdSize" : [5, 10],
+		"TotalRuns" : [3]
+	},
+	"nbParameters"   : [5, 15, 30],
+	"ratioIntervals" : [0.1, 0.2, 0.3],
+	"ratioParameters": [0.02, 0.04, 0.06]
+}
