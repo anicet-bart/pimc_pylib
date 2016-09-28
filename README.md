@@ -1,5 +1,5 @@
 # pimc_pylib
-pimc_pylib is the Python library for Parametric Interval Markov Chains (PIMC) manipulation.
+pimc_pylib is the Python library for Parametric Interval Markov Chains (PIMC) Verification.
 This library allows to: 
 * generate PIMCs from MCs (see. Section PIMC generator)
 * generate CSP models for PIMC verification (see. Section PIMC modeler)
