@@ -24,7 +24,9 @@ sys.setrecursionlimit(100000)
 
 # -i <pimc_file> -o <output_file> [-r | -d] [-smt | -milp [-semitCont] | -dot <sol>] [-vmcai16]
 
-parser = argparse.ArgumentParser("Existencial Consistency")
+parser = argparse.ArgumentParser(
+  description="PIMC_PYLIB Modeler [version 0.9]. Copyright (c) 2016 Ecole des Mines de Nantes",
+  epilog="More details at https://github.com/anicet-bart/pimc_pylib", formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('-i', metavar='<pimc_file>', help='input file containing the pIMC', required=True)
 parser.add_argument('-o', metavar='<output_file>', help='output file for printing the translation', required=True)
 
@@ -33,9 +35,9 @@ group.add_argument("-r", action = "store_true", dest='useFractions', help="use r
 group.add_argument("-d", action = "store_false", dest='useFractions', help="use double/float numbers")
 
 group = parser.add_mutually_exclusive_group(required=True)
-group.add_argument("-smt", action = "store_true", help="perform SMT modelling", default=False)
-group.add_argument("-milp", action = "store_true", help="perform MILP modelling", default=False)
-group.add_argument("-vmcai16", action = "store_true", default=False, help="perform VMCAI16 modelling in SMT")
+group.add_argument("-smt", action = "store_true", help="Existential consistency with our modelling in SMT format", default=False)
+group.add_argument("-milp", action = "store_true", help="Existential consistency with our modelling in MILP format", default=False)
+group.add_argument("-vmcai16", action = "store_true", default=False, help="Existential consistency with VMCAI16 modelling in SMT format")
 
 parser.add_argument('-semiCont', help='use semi-continuous variables', action="store_true", default=False)
 
