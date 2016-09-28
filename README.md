@@ -13,7 +13,7 @@ This library allows to:
 Launch Python scripts ```pimc_generator``` and ```pimc_modeler``` in the ```src``` folder to run respectively the PIMC generator and the PIMC modeler. Both commands have the ```-h``` option for printing help and usage.
 ```console
 > src/pimc_generator [-h] <generation_file> [-o <output_directory>]
-> src/pimc_modeler [-h] -i <pimc_file> [-smt | -milp | -vmcai16] [r | d] -o <output_file> 
+> src/pimc_modeler [-h] -i <pimc_file> (-smt | -milp | -vmcai16) [r | d] -o <output_file> 
 ```
 
 ## PIMC generator
@@ -44,3 +44,17 @@ The following configuration file will generate 12 PIMCs:
 **Warning:** do not forget to set the location of your PRISM executable in the ```config.ini``` file.
 
 ## PIMC modeler
+The PIMC modeler takes a PIMC as argument and returns a CSP model answering the existential consistency problem for this PIMC.
+Supported modellings are:
+* VMCAI16 modelling into the [SMT-LIB 2 format](http://smtlib.cs.uiowa.edu) (option ```-vmcai16```)
+* Our Mec modelling into the [SMT-LIB 2 format](http://smtlib.cs.uiowa.edu) (option ```-smt```)
+* Our Mec modelling into the [CPLEX LP file format](http://lpsolve.sourceforge.net/5.0/CPLEX-format.htm) (option ```-milp```)
+
+Examples:
+```terminal
+> ./src/pimc_modeler -smt -i data/pimcs/example.pimc -o /tmp/out.smt
+> z3 -smt2  /tmp/out.smt
+
+> ./src/pimc_modeler -milp -i data/pimcs/example.pimc -o /tmp/out.lp
+> cplex -c 'read /tmp/out.lp lp' 'optimize' 'display solution variables -'
+```
