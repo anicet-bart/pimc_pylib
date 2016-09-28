@@ -16,8 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import json
 import os
+import json
+import resource
+import threading
 
 def isInstance(variable, clazz):
     if (not isinstance(variable, clazz)):
@@ -60,6 +62,30 @@ def printInfo(name, value, size=25):
     print("c %s %s" % (name.ljust(size), value))
 
 
+printRU = False
+def printResourceUsage():
+	global printRU
+	if printRU:
+		threading.Timer(2.0, printResourceUsage).start()
+		usage = resource.getrusage(resource.RUSAGE_SELF)
+
+		# Memory used in Mb
+		userTime = usage.ru_utime
+		systemTime = usage.ru_stime
+		memoryUsed = usage.ru_maxrss / (1024**2)
+		print("UserTime: %.2f - SystemTime: %.2f - Memory: %sMb" % (userTime, systemTime, memoryUsed))
+		if memoryUsed > 2*1024:
+			os._exit(1)
+
+
+def startPrintResourceUsage():
+	global printRU
+	printRU = True
+	printResourceUsage()
+
+def endPrintResourceUsage():
+	global printRU
+	printRU = False
 
 def scientificNotation2smtNumber(strNumber):
 	result = strNumber

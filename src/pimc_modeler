@@ -28,11 +28,7 @@ import sys
 import argparse
 import samples.utils
 
-
 sys.setrecursionlimit(100000)
-
-# -i <pimc_file> -o <output_file> [-r | -d] [-smt | -milp [-semitCont] | -dot <sol>] [-vmcai16]
-
 parser = argparse.ArgumentParser(
   description="PIMC_PYLIB Modeler [version 0.9]. Copyright (c) 2016 Ecole des Mines de Nantes",
   epilog="More details at https://github.com/anicet-bart/pimc_pylib", formatter_class=argparse.RawTextHelpFormatter)
@@ -76,12 +72,15 @@ utils.printInfo("output_format", "smt" if (args.vmcai16 or args.smt) else "milp"
 utils.printInfo("output_numbers", "float")
 utils.printInfo("output_model", args.o)
 
+utils.startPrintResourceUsage()
 if args.vmcai16:
     model = SmtTranslater.consistencyVMCAI16(pimc2, args.o)
 elif args.smt:
     model = ModelerSMT.consistency(pimc2, args.o)
 else:
     model = ModelerMILP.consistency(pimc2, args.semiCont, args.o)
+utils.endPrintResourceUsage()
+
 infos = model.getInfos()
 infosOrder = ['#variables','#constraints',
               '#booleanVars','#continuousVars','#semiContinuousVars']
