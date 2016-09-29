@@ -24,6 +24,7 @@ from samples.milp_modeler import *
 from samples.smt_modeler import *
 from samples.smt_translater import *
 
+import os
 import sys
 import argparse
 import samples.utils
@@ -87,7 +88,7 @@ infosOrder = ['#variables','#constraints',
 for key in infosOrder:
     utils.printInfo(key, infos[key])
 
-exit(0)
+os._exit(0)
 
 
 if solFile:
