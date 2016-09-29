@@ -24,6 +24,7 @@ from samples.milp_modeler import *
 from samples.smt_modeler import *
 from samples.smt_translater import *
 
+import os
 import sys
 import argparse
 import samples.utils
@@ -88,7 +89,6 @@ for key in infosOrder:
     utils.printInfo(key, infos[key])
 
 utils.exit(0)
-
 
 if solFile:
     solution = Solution.parse(solFile)
