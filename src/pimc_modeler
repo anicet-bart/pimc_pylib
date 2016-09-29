@@ -87,7 +87,7 @@ infosOrder = ['#variables','#constraints',
 for key in infosOrder:
     utils.printInfo(key, infos[key])
 
-exit(0)
+utils.exit(0)
 
 
 if solFile:

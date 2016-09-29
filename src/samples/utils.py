@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import sys
 import json
 import resource
 import threading
@@ -64,6 +65,10 @@ def printTitle(message, size=70):
 def printInfo(name, value, size=25):
     print("c %s %s" % (name.ljust(size), value))
 
+def exit(status=0):
+	sys.stdout.flush()
+	sys.stderr.flush()
+	os._exit(1)
 
 printRU = False
 memoryLimit = 0
@@ -81,10 +86,10 @@ def printResourceUsage():
 		print("UserTime: %.2f - SystemTime: %.2f - Memory: %sMb" % (userTime, systemTime, memoryUsed))
 		if memoryUsed > memoryLimit:
 			print("Memory limit of %sMb reached " % memoryLimit)
-			os._exit(1)
+			exit(1)
 		if userTime + systemTime > timeLimit:
 			print("Time limit of %ssec. reached." % timeLimit)
-			os._exit(1)
+			exit(1)
 
 def startPrintResourceUsage():
 	global printRU, memoryLimit, timeLimit
