@@ -17,9 +17,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
-from inequation import *
-from model import *
-import utils
+from .inequation import *
+from .model import *
+import samples.utils as utils
 
 class ModelerSMT(object):
         

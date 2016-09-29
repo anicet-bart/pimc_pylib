@@ -29,6 +29,14 @@ import sys
 import argparse
 import samples.utils
 
+import signal
+def sig_handler(signum, frame):
+	print("segfault")
+	utils.startPrintResourceUsage()
+	
+
+signal.signal(signal.SIGSEGV, sig_handler)
+
 sys.setrecursionlimit(100000)
 parser = argparse.ArgumentParser(
   description="PIMC_PYLIB Modeler [version 0.9]. Copyright (c) 2016 Ecole des Mines de Nantes",

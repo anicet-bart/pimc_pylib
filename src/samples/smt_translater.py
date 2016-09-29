@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from inequation import *
-from model import *
-from vmcai16_modeler import *
+from .inequation import *
+from .model import *
+from .vmcai16_modeler import *
 import traceback
 import sys
 
@@ -115,8 +115,8 @@ class SmtTranslater(object):
                     sumRHS += self.getVariable(c) + " "
                 nbVariablesRHS += 1
 
-	constantsLHS = [utils.string2smtNumber(x) for x in constraint.getConstantLHS()]
-	constantsRHS = [utils.string2smtNumber(x) for x in constraint.getConstantRHS()]
+        constantsLHS = [utils.string2smtNumber(x) for x in constraint.getConstantLHS()]
+        constantsRHS = [utils.string2smtNumber(x) for x in constraint.getConstantRHS()]
         sumConstantsLHS = "0" if (nbConstantsLHS == 0) else " ".join(constantsLHS)
         sumConstantsRHS = "0" if (nbConstantsRHS == 0) else " ".join(constantsRHS)
         if nbConstantsLHS + nbVariablesLHS > 1:

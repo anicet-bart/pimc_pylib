@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import utils
+import samples.utils as utils
+import samples.inequation as inequation
 import collections
-import inequation
 
 class Variable(object):
     def __init__(self, name):
