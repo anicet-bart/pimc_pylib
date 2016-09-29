@@ -64,7 +64,7 @@ try:
 	if not(os.path.isfile(configIni['prism'])):
 		raise Exception("PRISM executable '%s' not found." % (configIni['prism']))
 except Exception as e:
-	print("Please check your configuration file config.ini at %s" % (PIMC_PYLIB_DIRECTORY))
+	print("Please check your configuration file config.ini at %s" % (utils.getConfigIniLocation()))
 	print(e)
 	exit(1)
 

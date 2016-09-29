@@ -48,8 +48,11 @@ def powerset(seq):
 def getPimcPylibDirectory():
     return os.path.normpath(os.path.dirname(os.path.realpath(__file__)) + os.sep + ".." + os.sep + "..") + os.sep
 
+def getConfigIniLocation():
+	return getPimcPylibDirectory() + "config.ini"
+
 def getConfigIni():
-    configFile = open(getPimcPylibDirectory() + "config.ini", "r")
+    configFile = open(getConfigIniLocation(), "r")
     result = json.load(configFile)
     configFile.close()
     return result
@@ -63,23 +66,42 @@ def printInfo(name, value, size=25):
 
 
 printRU = False
+memoryLimit = 0
+timeLimit = 0
 def printResourceUsage():
-	global printRU
+	global printRU, memoryLimit, timeLimit
 	if printRU:
 		threading.Timer(2.0, printResourceUsage).start()
 		usage = resource.getrusage(resource.RUSAGE_SELF)
 
-		# Memory used in Mb
+		# Get time in sec. and memory used in Mb
 		userTime = usage.ru_utime
 		systemTime = usage.ru_stime
 		memoryUsed = usage.ru_maxrss / (1024**2)
 		print("UserTime: %.2f - SystemTime: %.2f - Memory: %sMb" % (userTime, systemTime, memoryUsed))
-		if memoryUsed > 2*1024:
+		if memoryUsed > memoryLimit:
+			print("Memory limit of %sMb reached " % memoryLimit)
+			os._exit(1)
+		if userTime + systemTime > timeLimit:
+			print("Time limit of %ssec. reached." % timeLimit)
 			os._exit(1)
 
-
 def startPrintResourceUsage():
-	global printRU
+	global printRU, memoryLimit, timeLimit
+	if (memoryLimit == 0):
+		try:
+			config = getConfigIni()
+			if not("memory_limit" in config):
+				raise Exception("Missing key 'memory_limit' in config.ini.")
+			if not("time_limit" in config):
+				raise Exception("Missing key 'time_limit' in config.ini.")
+			memoryLimit = int(config['memory_limit'])
+			timeLimit = int(config['time_limit'])
+		except Exception as e:
+			print("Please check your configuration file config.ini at %s" % (getConfigIniLocation()))
+			print(e)
+			exit(2)
+
 	printRU = True
 	printResourceUsage()
 
