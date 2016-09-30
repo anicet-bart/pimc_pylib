@@ -50,8 +50,8 @@ Supported modellings are:
 * Our Mec modelling into the [SMT-LIB 2 format](http://smtlib.cs.uiowa.edu) (option ```-smt```)
 * Our Mec modelling into the [CPLEX LP file format](http://lpsolve.sourceforge.net/5.0/CPLEX-format.htm) (option ```-milp```)
 
-Optional option:
-* ```-semiCont``` available with ```-milp``` for using [semi-continuous variables](http://lpsolve.sourceforge.net/5.5/semi-cont.htm) when it is possible
+Optional arguments:
+* ```-semiCont``` available with ```-milp``` for using [semi-continuous variables](http://lpsolve.sourceforge.net/5.5/semi-cont.htm) when possible
 
 Examples:
 ```terminal
