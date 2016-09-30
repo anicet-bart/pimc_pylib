@@ -5,7 +5,7 @@ This library allows to:
 * generate CSP models for PIMC verification (see. Section PIMC modeler)
 
 ## Installation
-- Python 2 or Python 3 is required
+- Python 3 is required
 - [PRISM](http://www.prismmodelchecker.org) is required for using PIMC generator
 - Edit the ```config.ini``` file to set the location of your PRISM executable/binary.
 
@@ -49,6 +49,9 @@ Supported modellings are:
 * VMCAI16 modelling into the [SMT-LIB 2 format](http://smtlib.cs.uiowa.edu) (option ```-vmcai16```)
 * Our Mec modelling into the [SMT-LIB 2 format](http://smtlib.cs.uiowa.edu) (option ```-smt```)
 * Our Mec modelling into the [CPLEX LP file format](http://lpsolve.sourceforge.net/5.0/CPLEX-format.htm) (option ```-milp```)
+
+Optional option:
+* ```-semiCont``` available with ```-milp``` for using [semi-continuous variables](http://lpsolve.sourceforge.net/5.5/semi-cont.htm) when it is possible
 
 Examples:
 ```terminal
