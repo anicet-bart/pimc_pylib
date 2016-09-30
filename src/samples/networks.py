@@ -233,8 +233,8 @@ class PIMC(IMC):
         result = {}
         result['#states'] = nbStates
         result['#transitions'] = nbTransitions
-        result['ratioIntervals'] = nbIntervals / float(nbTransitions)
-        result['ratioParamInBounds'] = nbParamsInBounds / (2. * nbIntervals)
+        result['ratioIntervals'] = nbIntervals / float(nbTransitions) if nbTransitions != 0 else 0
+        result['ratioParamInBounds'] = nbParamsInBounds / (2. * nbIntervals) if nbIntervals != 0 else 0
         result['#intervals'] = nbIntervals
         result['#parameters'] = nbParameters
         result['#paramInBounds'] = nbParamsInBounds
