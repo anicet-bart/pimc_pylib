@@ -183,10 +183,14 @@ class ReachabilitySMT(object):
                 lb = self.bound2smt(inter['lb'])
                 ub = self.bound2smt(inter['ub'])
 
-                self.constraints.append("(assert (=> (= %s true) (<= %s %s)))\n" % 
-                    (self.getReachabilityVariable(s), lb, self.getTransitionVariable(s, ss)))
-                self.constraints.append("(assert (=> (= %s true) (>= %s %s)))\n" % 
-                    (self.getReachabilityVariable(s), ub, self.getTransitionVariable(s, ss)))
+                if lb == ub:
+                    self.constraints.append("(assert (=> (= %s true) (= %s %s)))\n" % 
+                        (self.getReachabilityVariable(s), lb, self.getTransitionVariable(s, ss)))
+                else:
+                    self.constraints.append("(assert (=> (= %s true) (<= %s %s)))\n" % 
+                        (self.getReachabilityVariable(s), lb, self.getTransitionVariable(s, ss)))
+                    self.constraints.append("(assert (=> (= %s true) (>= %s %s)))\n" % 
+                        (self.getReachabilityVariable(s), ub, self.getTransitionVariable(s, ss)))
 
             # Out probability
             if s == initialState:

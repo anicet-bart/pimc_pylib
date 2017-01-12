@@ -71,7 +71,7 @@ for key in expectedKeys:
 # Set list of parameters
 if 'parameters' in config:
 	config['nbParameters'] = len(config['parameters'])
-	config['parameters'] = [config['parameters']]
+	config['parameters'] = [utils.toList(config['parameters'])]
 elif 'nbParameters' in config:
 	config['parameters'] = []
 	for nbParams in config['nbParameters']:
@@ -99,6 +99,12 @@ ratioIntervals = utils.toList(config['ratioIntervals'])
 ratioParameters = utils.toList(config['ratioParameters'])
 paramValues = [config['parameters'], [str(i) for i in ratioIntervals], [str(i) for i in ratioParameters]]
 
+param2uid = {}
+for parameters in config['parameters']:
+	for value, expr in config["proba2param"].iteritems():
+		if expr in parameters:
+			param2uid[expr] = value
+
 # PRIMS command
 pimcs = []
 for prismFile in prismFiles:
@@ -109,7 +115,8 @@ for prismFile in prismFiles:
 		trafile = benchname + ".tra"
 
 		consts  = ["-const %s=%s" % (constantNames[i], constants[i]) for i in range(len(constants))]
-		cmd     = "%s %s %s -exportmodel %s" % (PRISM, prismFile, " ".join(consts), trafile + ",lab")
+		params  = ["-const %s=%s" % (p, uid) for p, uid in param2uid.iteritems()]
+		cmd     = "%s %s %s %s -exportmodel %s" % (PRISM, prismFile, " ".join(consts), " ".join(params), trafile + ",lab")
 		utils.printTitle("[begin] Running PRISM")
 		execute(cmd)
 		utils.printTitle("[end] Running PRISM")

@@ -65,8 +65,10 @@ class ModelerSMT(object):
         parameters = self.pimc.getParameters()
 
         # Parameter variables
+        self.param2variable = {}
         for p in parameters:
             var = self.getParameterVariable(p)
+            self.param2variable[p] = var
             self.addContinuousVariable(var, 0., 1.)
 
         # Reachability variables
@@ -84,6 +86,18 @@ class ModelerSMT(object):
                 var = self.getTransitionVariable(s, ss)
                 self.addSemiContinuousVariable(var, lb, ub)
 
+    def bound2smt(self, bound):
+        result = bound
+
+        # Search and replace parameters by their coresponding variables
+        if isinstance(bound, basestring):
+            result = utils.multireplace(bound, self.param2variable)
+
+        # If no parameters format number as smt number
+        if result == bound:
+            result = utils.string2smtNumber(bound)
+
+        return result
 
     def getSumPredecessors(self, state, predecessors):
         result = "+"
@@ -120,22 +134,17 @@ class ModelerSMT(object):
                 (self.getReachabilityVariable(s), sumSuccessors))
             for ss in successors[s]:
                 inter = self.pimc.getTransition(s, ss)
-                lb = inter['lb']
-                if lb in parameters:
-                    lb = self.getParameterVariable(lb)
-                else:
-                    lb = utils.string2smtNumber(lb)
+                lb = self.bound2smt(inter['lb'])
+                ub = self.bound2smt(inter['ub'])
 
-                ub = inter['ub']
-                if ub in parameters:
-                    ub = self.getParameterVariable(ub)
+                if lb == ub:
+                    self.constraints.append("(assert (=> (= %s true) (= %s %s)))\n" % 
+                        (self.getReachabilityVariable(s), lb, self.getTransitionVariable(s, ss)))
                 else:
-                    ub = utils.string2smtNumber(ub)
-
-                self.constraints.append("(assert (=> (= %s true) (<= %s %s)))\n" % 
-                    (self.getReachabilityVariable(s), lb, self.getTransitionVariable(s, ss)))
-                self.constraints.append("(assert (=> (= %s true) (>= %s %s)))\n" % 
-                    (self.getReachabilityVariable(s), ub, self.getTransitionVariable(s, ss)))
+                    self.constraints.append("(assert (=> (= %s true) (<= %s %s)))\n" % 
+                        (self.getReachabilityVariable(s), lb, self.getTransitionVariable(s, ss)))
+                    self.constraints.append("(assert (=> (= %s true) (>= %s %s)))\n" % 
+                        (self.getReachabilityVariable(s), ub, self.getTransitionVariable(s, ss)))
 
 
     def printModel(self, fileName):

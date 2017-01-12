@@ -80,9 +80,11 @@ infosOrder = ['#states','#transitions','initialState',
 for key in infosOrder:
     utils.printInfo(key, infos[key])
 
+
+utils.printTitle("Modelling")
+
 # Verification Modelling
 if args.reachability or args.vmcai16 or args.smt or args.milp:
-  utils.printTitle("Modelling")
   utils.printInfo("output_format", "smt" if (args.vmcai16 or args.smt) else "milp")
   utils.printInfo("output_numbers", "float")
   utils.printInfo("output_model", args.o)
@@ -106,6 +108,8 @@ if args.reachability or args.vmcai16 or args.smt or args.milp:
 
 # Dot Modelling
 if args.dot:
+  utils.printInfo("output_format", "dot")
+  utils.printInfo("output_file", args.o)
   DotModeler.export(pimc2, args.o)
 
 utils.exit(0)

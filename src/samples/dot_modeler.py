@@ -26,7 +26,6 @@ class DotModeler(object):
         self.file = file
         self.solution = solution
 
-        print(solution)
         self.out = open(file, "w")
         self.header()
         self.addNodes()
@@ -74,7 +73,7 @@ class DotModeler(object):
                         label += " " + str(self.transition(s, ss))
                 else:
                     label = "0"
-                print ("%s -> %s = %s" % (s,ss,label))
+                #print ("%s -> %s = %s" % (s,ss,label))
                 self.addEdge(s, ss, label, reachable)
 
     def addEdge(self, stateFrom, stateTo, label, reachable=True):
