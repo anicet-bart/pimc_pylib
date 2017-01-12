@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import utils
+import samples.utils as utils
 import fractions
 from copy import copy
 
@@ -236,7 +236,7 @@ class PIMC(IMC):
         result = {}
         result['#states'] = nbStates
         result['#transitions'] = nbTransitions
-        result['ratioIntervals'] = nbIntervals / float(nbTransitions)
+        result['ratioIntervals'] = nbIntervals / float(nbTransitions) if nbTransitions != 0 else 0
         result['ratioParamInBounds'] = nbParamsInBounds / (2. * nbIntervals) if nbIntervals != 0 else 0
         result['#intervals'] = nbIntervals
         result['#parameters'] = nbParameters

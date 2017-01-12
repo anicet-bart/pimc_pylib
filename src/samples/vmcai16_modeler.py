@@ -16,10 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import utils
-from readers import *
-from model import *
-from inequation import *
+import samples.utils as utils
+from .readers import *
+from .model import *
+from .inequation import *
 
 
 class ModelerVMCAI16(object):

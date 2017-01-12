@@ -30,6 +30,14 @@ import sys
 import argparse
 import samples.utils
 
+import signal
+def sig_handler(signum, frame):
+	print("segfault")
+	utils.startPrintResourceUsage()
+	
+
+signal.signal(signal.SIGSEGV, sig_handler)
+
 sys.setrecursionlimit(100000)
 parser = argparse.ArgumentParser(
   description="PIMC_PYLIB Modeler [version 0.9]. Copyright (c) 2016 Ecole des Mines de Nantes",
@@ -100,8 +108,7 @@ if args.reachability or args.vmcai16 or args.smt or args.milp:
 if args.dot:
   DotModeler.export(pimc2, args.o)
 
-os._exit(0)
-
+utils.exit(0)
 
 if solFile:
     solution = Solution.parse(solFile)
