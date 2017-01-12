@@ -28,7 +28,7 @@ class Solution(object):
         if not(stateTo):
             variable = stateFrom
         else:
-            variable = 'x_' + str(stateFrom) + ',' + str(stateTo)
+            variable = 't_' + str(stateFrom) + ',' + str(stateTo)
 
         if variable in self.values:
             return self.values[variable]

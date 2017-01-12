@@ -19,15 +19,18 @@
 # Transition Matrix from PRISM to PIMC format
 import random as rd
 from networks import *
+import ast
+import json
 
 import argparse
 parser = argparse.ArgumentParser("Translates a MC transition function into a PIMC")
-parser.add_argument('file', help='Transition function file')
-parser.add_argument('-init', help='initial state to consider', type=int, default=-1)
-parser.add_argument('-o', help='output PIMC file', default='/dev/stdout')
-parser.add_argument('-p', help='number of parameters', type=int, default='0')
-parser.add_argument('-ri', help='probability to transform a probability to an interval (value between 0. and 1.)', type=float, default='0.')
-parser.add_argument('-rp', help='probability to transform a bound of an interval to a parameter (value between 0. and 1.)', type=float, default='0.')
+parser.add_argument('file',     help='Transition function file')
+parser.add_argument('-label',   help='states labeling file')
+parser.add_argument('-o',       help='output PIMC file', default='/dev/stdout')
+parser.add_argument('-params',  help='list of parameters', default='[]')
+parser.add_argument('-replace', help='list of parameters', default='{}')
+parser.add_argument('-ri',      help='probability to transform a probability to an interval (value between 0. and 1.)', type=float, default='0.')
+parser.add_argument('-rp',      help='probability to transform a bound of an interval to a parameter (value between 0. and 1.)', type=float, default='0.')
 args = parser.parse_args()
 
 fileName = args.file
@@ -36,20 +39,42 @@ out = open(args.o, 'w')
 
 # Parameters
 nbStates, nbTransitions = (int(nb) for nb in file.readline().split())
-initialState        = args.init
-nbParameters        = args.p if args.p > 0 else 0
-percentIntervals    = args.ri if (0 < args.ri and args.ri < 1) else 0
-percentParametrics  = args.rp if (0 < args.rp and args.rp < 1) else 0
+labelingFile        = args.label
+parameters          = utils.toList(ast.literal_eval(args.params))
+substitutions       = json.loads(args.replace)
+nbParameters        = len(parameters)
+percentIntervals    = args.ri if (0 <= args.ri and args.ri <= 1) else 0
+percentParametrics  = args.rp if (0 <= args.rp and args.rp <= 1) else 0
 nbIntervals         = 0
 nbParamsInIntervals = 0
 
-# Generate parameters
-parameters = []
-prefix = ""
-for i in range(0, nbParameters):
-	if i % 26 == 0 and i > 0:
-		prefix += "a"
-	parameters.append(prefix + chr(ord('a') + (i % 26)))
+
+# Get labels from labeling file. Example labeling file content (5 states and 3 labels)
+# Remark: some states may have no label
+# 0="init" 1="deadlock" 2="target"
+# 0: 0
+# 1: 1
+# 2: 1
+# 3: 2
+# 4: 1
+def getInitialStatFromLabelFile(prismLabelFile):
+	file = open(prismLabelFile)
+	# Read first line to get the key associated to the initial state
+	# 0="init" 1="deadlock"
+	header = file.readline()
+	labels = {x.split("=")[0]:x.split("=")[1] for x in header.split()}
+	initialState = ""
+	statesLabeling = {}
+	for line in file:
+		labeling = line.split(':')
+		labeling[0] = labeling[0].strip()
+		labeling[1] = labels[labeling[1].strip()]
+		if labeling[1] == '\"init\"':
+			if initialState:
+				raise Exception("Too many initial states (only one initial state allowed)")
+			initialState = int(labeling[0])
+		statesLabeling[labeling[0]] = labeling[1]
+	return initialState, statesLabeling
 
 # Get states/nodes from the MC transition probabilities
 def getStates(fileName):
@@ -68,21 +93,31 @@ def getStates(fileName):
 def generateInterval(value):
 	global nbIntervals, nbParamsInIntervals
 
-	value = float(value)
-	if rd.random() < percentIntervals:
-		nbIntervals += 1
-		if rd.random() < percentParametrics:
-			nbParamsInIntervals += 1
-			lb = parameters[rd.randint(0, nbParameters-1)]
-		else:
-			lb = rd.uniform(0, value)
+	if value in substitutions:
+		nbParamsInIntervals += 1
+		return substitutions[value]
 
-		if rd.random() < percentParametrics:
-			nbParamsInIntervals += 1
-			ub = parameters[rd.randint(0, nbParameters-1)]
-		else:
-			ub = rd.uniform(value, 1)
-		return "%s ; %s" % (lb, ub)
+	value = float(value)
+	# Try to generate an interval if percentIntervals > 0
+	if percentIntervals > 0:
+		if rd.random() < percentIntervals:
+			nbIntervals += 1
+			if rd.random() < percentParametrics:
+				nbParamsInIntervals += 1
+				lb = parameters[rd.randint(0, nbParameters-1)]
+			else:
+				lb = rd.uniform(0, value)
+
+			if rd.random() < percentParametrics:
+				nbParamsInIntervals += 1
+				ub = parameters[rd.randint(0, nbParameters-1)]
+			else:
+				ub = rd.uniform(value, 1)
+			value = "%s ; %s" % (lb, ub)
+
+	# Else try to generate a parameter
+	elif rd.random() < percentParametrics:
+		value = parameters[rd.randint(0, nbParameters-1)]
 
 	return str(value)
 
@@ -111,9 +146,12 @@ pimc.setParameters(parameters)
 transitions = getTransitionsWithParametricIntervals(fileName)
 for transition in transitions:
 	pimc.setProbabilityFromString(transition['stateFrom'], transition['stateTo'], transition['probabilities'])
-if initialState == -1:
+if not(labelingFile):
 	initialState, nbChildren = pimc.guessInitialState()
-initialState = str(initialState)
+	initialState = str(initialState)
+	statesLabeling = {}
+else:
+	initialState, statesLabeling = getInitialStatFromLabelFile(labelingFile)
 
 # Generate pIMC
 out.write("#nbStates          %s\n" % (nbStates))
@@ -131,10 +169,11 @@ out.write('Parameters: %s\n' % (nbParameters))
 for param in parameters:
 	out.write('%s\n' % (param))
 out.write('Labels:\n')
-out.write('%s : %s\n' % (initialState, initialState))
-for state in states:
-	if state != initialState:
-		out.write('%s : %s\n' % (state, state))
+#out.write('%s : %s\n' % (initialState, initialState))
+for state in sorted(states, key=int):
+	#if state != initialState:
+	label = statesLabeling[state] if (state in statesLabeling) else ''
+	out.write('%s : %s\n' % (state, label))
 
 out.write('Edges:\n')
 for transition in transitions:

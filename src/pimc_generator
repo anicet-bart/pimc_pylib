@@ -37,23 +37,6 @@ def execute(cmd):
 	process = subprocess.Popen(cmd, shell=True)
 	result = process.wait()
 
-def getInitialStatFromLabelFile(prismLabelFile):
-	file = open(prismLabelFile)
-	# Read first line to get the key associated to the initial state
-	# 0="init" 1="deadlock"
-	header = file.readline()
-	header = {x.split("=")[0]:x.split("=")[1] for x in header.split()}
-	keyInitialState = ""
-	for key in header:
-		if header[key] == '\"init\"':
-			keyInitialState = key
-	assert(keyInitialState != "")
-
-	for line in file:
-		line = line.strip()
-		if line.endswith(keyInitialState):
-			return int(line.split(":")[0])
-
 
 # Check PRISM installation
 PIMC_PYLIB_DIRECTORY = utils.getPimcPylibDirectory()
@@ -78,12 +61,35 @@ if outdir == "":
 configFile = open(args.c, 'r')
 config = json.load(configFile)
 configFile.close()
-expectedKeys = ['prismFile', 'prismConstants', 'nbParameters', 'ratioIntervals', 'ratioParameters']
+expectedKeys = ['prismFile', 'prismConstants']
 for key in expectedKeys:
 	if not(key in config):
 		print("Please check your generation configuration file %s" % (args.c))
 		print('Missing key "%s".' % (key))
 		exit(2)
+
+# Set list of parameters
+if 'parameters' in config:
+	config['nbParameters'] = len(config['parameters'])
+	config['parameters'] = [config['parameters']]
+elif 'nbParameters' in config:
+	config['parameters'] = []
+	for nbParams in config['nbParameters']:
+		prefix = ""
+		parameters = []
+		for i in range(0, config['nbParameters']):
+			if i % 26 == 0 and i > 0:
+				prefix += "a"
+			parameters.append(prefix + chr(ord('a') + (i % 26)))
+		config['parameters'].append(parameters)
+
+if not("proba2param" in config):
+	config["proba2param"] = {}
+
+# Default value for 'ratioIntervals' and 'ratioParameters'
+config['ratioIntervals'] = config['ratioIntervals'] if ('ratioIntervals' in config) else 0
+config['ratioParameters'] = config['ratioParameters'] if ('ratioParameters' in config) else 0
+
 
 prismFiles = utils.toList(config['prismFile'])
 constantNames  = config['prismConstants'].keys()
@@ -91,7 +97,7 @@ constantValues = [utils.toList(config['prismConstants'][c]) for c in constantNam
 nbParameters = utils.toList(config['nbParameters'])
 ratioIntervals = utils.toList(config['ratioIntervals'])
 ratioParameters = utils.toList(config['ratioParameters'])
-paramValues = [[str(i) for i in nbParameters], [str(i) for i in ratioIntervals], [str(i) for i in ratioParameters]]
+paramValues = [config['parameters'], [str(i) for i in ratioIntervals], [str(i) for i in ratioParameters]]
 
 # PRIMS command
 pimcs = []
@@ -107,15 +113,14 @@ for prismFile in prismFiles:
 		utils.printTitle("[begin] Running PRISM")
 		execute(cmd)
 		utils.printTitle("[end] Running PRISM")
-		print('')
-		# Read initial state from ".lab" file
-		initialState = getInitialStatFromLabelFile(benchname + ".lab")
 
 		# TRA2PIMC 
-		utils.printTitle("[begin] Generating PIMCs from PRISM tra and lab files")
+		utils.printTitle("[begin] Generating PIMCs from PRISM .tra and .lab files")
 		for params in itertools.product(*paramValues):
-			pimcfile = os.path.normpath(benchname + "_" + "_".join(params) + ".pimc")
-			cmd = "python %s %s -o %s -p %s -ri %s -rp %s -init %s" % (TRA2PIMC, trafile, pimcfile, params[0], params[1], params[2], initialState)
+			idParam = str(config['parameters'].index(params[0]))
+			pimcfile = os.path.normpath(benchname + "_p" + idParam + "_ri" + params[1] + "_rp" + params[2] + ".pimc")
+			cmd = "python %s %s -o %s -params \"%s\" -ri %s -rp %s -lab %s -replace '%s'" % (TRA2PIMC, trafile, pimcfile, params[0], params[1], params[2], benchname + ".lab", json.dumps(config["proba2param"]))
+			print(cmd)
 			execute(cmd)
 			pimcs.append(pimcfile)
 		utils.printTitle("[end] Generating PIMCs from PRISM tra and lab files")

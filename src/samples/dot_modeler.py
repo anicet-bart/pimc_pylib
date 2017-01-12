@@ -55,6 +55,7 @@ class DotModeler(object):
             self.addNode(state, label)
 
     def addNode(self, state, label):
+        label = label.replace('"', '\\"')
         self.out.write('\tSTATE%s[label="%s" xlabel="%s" fillcolor="#d36b00" shape="circle"];\n' % (state, state, label))
 
     def addEdges(self):

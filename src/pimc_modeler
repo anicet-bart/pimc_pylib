@@ -23,6 +23,7 @@ from samples.solution import *
 from samples.milp_modeler import *
 from samples.smt_modeler import *
 from samples.smt_translater import *
+from samples.smt_reachability import *
 
 import os
 import sys
@@ -44,6 +45,11 @@ group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument("-smt", action = "store_true", help="Existential consistency with our modelling in SMT format", default=False)
 group.add_argument("-milp", action = "store_true", help="Existential consistency with our modelling in MILP format", default=False)
 group.add_argument("-vmcai16", action = "store_true", default=False, help="Existential consistency with VMCAI16 modelling in SMT format")
+group.add_argument("-dot", action = "store_true", default=False, help="Output the pIMC in .dot format")
+
+group = parser.add_mutually_exclusive_group()
+group.add_argument("-reach", action = "store_true", dest='reachability', help="model reachability problem")
+group.add_argument("-cons",  action = "store_false", dest='reachability', help="model consistency problem")
 
 parser.add_argument('-semiCont', help='use semi-continuous variables', action="store_true", default=False)
 
@@ -52,7 +58,6 @@ parser.add_argument('-semiCont', help='use semi-continuous variables', action="s
 args = parser.parse_args()
 
 file = args.i
-dotFile = False #args.dot
 solFile = ""    #args.sol
 
 # Loadding pIMC
@@ -67,26 +72,33 @@ infosOrder = ['#states','#transitions','initialState',
 for key in infosOrder:
     utils.printInfo(key, infos[key])
 
-# Modelling
-utils.printTitle("Modelling")
-utils.printInfo("output_format", "smt" if (args.vmcai16 or args.smt) else "milp")
-utils.printInfo("output_numbers", "float")
-utils.printInfo("output_model", args.o)
+# Verification Modelling
+if args.reachability or args.vmcai16 or args.smt or args.milp:
+  utils.printTitle("Modelling")
+  utils.printInfo("output_format", "smt" if (args.vmcai16 or args.smt) else "milp")
+  utils.printInfo("output_numbers", "float")
+  utils.printInfo("output_model", args.o)
 
-utils.startPrintResourceUsage()
-if args.vmcai16:
+  utils.startPrintResourceUsage()
+  if args.reachability:
+    model = ReachabilitySMT.reachability(pimc2, args.o)
+  elif args.vmcai16:
     model = SmtTranslater.consistencyVMCAI16(pimc2, args.o)
-elif args.smt:
+  elif args.smt:
     model = ModelerSMT.consistency(pimc2, args.o)
-else:
+  elif args.milp:
     model = ModelerMILP.consistency(pimc2, args.semiCont, args.o)
-utils.endPrintResourceUsage()
+  utils.endPrintResourceUsage()
 
-infos = model.getInfos()
-infosOrder = ['#variables','#constraints',
-              '#booleanVars','#continuousVars','#semiContinuousVars']
-for key in infosOrder:
-    utils.printInfo(key, infos[key])
+  infos = model.getInfos()
+  infosOrder = ['#variables','#constraints',
+                '#booleanVars','#continuousVars','#semiContinuousVars']
+  for key in infosOrder:
+      utils.printInfo(key, infos[key])
+
+# Dot Modelling
+if args.dot:
+  DotModeler.export(pimc2, args.o)
 
 os._exit(0)
 

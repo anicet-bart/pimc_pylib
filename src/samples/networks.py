@@ -179,28 +179,31 @@ class PIMC(IMC):
     def isParameter(self, value):
         return value in self.parameters
       
+    def isParametric(self, value):
+        for p in self.parameters:
+            if p in value:
+                return True
+        return False
+
     def getParameters(self):
         return self.parameters
       
     def setProbabilityFromString(self, nodeFrom, nodeTo, probability):
         bounds = probability.split(';')
         # Lower bound
-        lowerBound = "".join(bounds[0].split()) # removes spaces
-        if not(lowerBound in self.parameters):
+        lowerBound = bounds[0].strip()
+        if not(self.isParametric(lowerBound)):
+            lowerBound = "".join(lowerBound.split()) # removes spaces for fractions
             if self.useFractions:
                 lowerBound = fractions.Fraction(lowerBound)
-            else:
-                lowerBound = lowerBound
-
             
         # Upper bound
         if len(bounds) > 1:
-            upperBound = "".join(bounds[1].split()) # removes spaces
-            if not(upperBound in self.parameters):
+            upperBound = bounds[1].strip()
+            if not(self.isParametric(upperBound)):
+                upperBound = "".join(upperBound.split()) # removes spaces for fractions
                 if self.useFractions:
                     upperBound = fractions.Fraction(upperBound)
-                else:
-                    upperBound = upperBound
         else:
             upperBound = copy(lowerBound)
         self.setProbability(nodeFrom, nodeTo, {'lb': lowerBound, 'ub':upperBound})
@@ -234,7 +237,7 @@ class PIMC(IMC):
         result['#states'] = nbStates
         result['#transitions'] = nbTransitions
         result['ratioIntervals'] = nbIntervals / float(nbTransitions)
-        result['ratioParamInBounds'] = nbParamsInBounds / (2. * nbIntervals)
+        result['ratioParamInBounds'] = nbParamsInBounds / (2. * nbIntervals) if nbIntervals != 0 else 0
         result['#intervals'] = nbIntervals
         result['#parameters'] = nbParameters
         result['#paramInBounds'] = nbParamsInBounds

@@ -20,6 +20,8 @@ import os
 import json
 import resource
 import threading
+import fractions
+import re
 
 def isInstance(variable, clazz):
     if (not isinstance(variable, clazz)):
@@ -111,6 +113,9 @@ def endPrintResourceUsage():
 
 def scientificNotation2smtNumber(strNumber):
 	result = strNumber
+	if isinstance(strNumber, fractions.Fraction):
+		return "(/ %s %s)" % (strNumber.numerator, strNumber.denominator)
+
 	if "e" in strNumber:
 		number = strNumber.split("e")
 		assert(len(number) == 2)
@@ -136,3 +141,23 @@ def scientificNotation2smtNumber(strNumber):
 
 def string2smtNumber(str):
 	return scientificNotation2smtNumber(str)
+
+
+# Source: https://gist.github.com/bgusach/a967e0587d6e01e889fd1d776c5f3729
+def multireplace(string, replacements):
+    """
+    Given a string and a replacement map, it returns the replaced string.
+    :param str string: string to execute replacements on
+    :param dict replacements: replacement dictionary {value to find: value to replace}
+    :rtype: str
+    """
+    # Place longer ones first to keep shorter substrings from matching where the longer ones should take place
+    # For instance given the replacements {'ab': 'AB', 'abc': 'ABC'} against the string 'hey abc', it should produce
+    # 'hey ABC' and not 'hey ABc'
+    substrs = sorted(replacements, key=len, reverse=True)
+
+    # Create a big OR regex that matches any of the substrings to replace
+    regexp = re.compile('|'.join(map(re.escape, substrs)))
+
+    # For each match, look up the new string in the replacements
+    return regexp.sub(lambda match: replacements[match.group(0)], string)
