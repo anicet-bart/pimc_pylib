@@ -21,8 +21,10 @@ import random as rd
 from networks import *
 import ast
 import json
-
+import re
 import argparse
+import fractions
+
 parser = argparse.ArgumentParser("Translates a MC transition function into a PIMC")
 parser.add_argument('file',     help='Transition function file')
 parser.add_argument('-label',   help='states labeling file')
@@ -66,13 +68,15 @@ def getInitialStatFromLabelFile(prismLabelFile):
 	initialState = ""
 	statesLabeling = {}
 	for line in file:
+		# Grammar: <state> : <label1> <label2> ... <label_n>
+		# Example: 1 : 0 2 7
 		labeling = line.split(':')
 		labeling[0] = labeling[0].strip()
-		labeling[1] = labels[labeling[1].strip()]
-		if labeling[1] == '\"init\"':
+		labeling[1] = [labels[e.strip()] for e in labeling[1].split()]
+		if '\"init\"' in labeling[1]:
 			if initialState:
 				raise Exception("Too many initial states (only one initial state allowed)")
-			initialState = int(labeling[0])
+			initialState = labeling[0]
 		statesLabeling[labeling[0]] = labeling[1]
 	return initialState, statesLabeling
 
@@ -94,6 +98,14 @@ def generateInterval(value):
 	global nbIntervals, nbParamsInIntervals
 
 	if value in substitutions:
+		if "/" in substitutions[value]:
+			fraction = utils.smtFraction2fraction(substitutions[value])
+			if not(fraction):
+				print("Incorrect expression: expected format (/ a b) and given '%s'" % substitutions[value])
+				raise
+			else:
+				return str(fraction)
+
 		nbParamsInIntervals += 1
 		return substitutions[value]
 
@@ -163,17 +175,19 @@ out.write("#nbParameters      %s\n" % (nbParameters))
 out.write("#nbParamInBounds   %s\n" % (nbParamsInIntervals))
 out.write("#initialState      %s\n" % (initialState))
 
+print(parameters)
+
 out.write('Type: pIMC\n')
 out.write('Nodes: %s\n' % (nbStates))
 out.write('Parameters: %s\n' % (nbParameters))
 for param in parameters:
 	out.write('%s\n' % (param))
 out.write('Labels:\n')
-#out.write('%s : %s\n' % (initialState, initialState))
+out.write('%s : %s\n' % (initialState, " ".join(statesLabeling[initialState])))
 for state in sorted(states, key=int):
-	#if state != initialState:
-	label = statesLabeling[state] if (state in statesLabeling) else ''
-	out.write('%s : %s\n' % (state, label))
+	if state != initialState:
+		label = " ".join(statesLabeling[state]) if (state in statesLabeling) else ''
+		out.write('%s : %s\n' % (state, label))
 
 out.write('Edges:\n')
 for transition in transitions:

@@ -16,8 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import samples.utils as utils
-import samples.inequation as inequation
+import core.utils as utils
+import core.inequation as inequation
 import collections
 
 class Variable(object):

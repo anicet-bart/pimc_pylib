@@ -17,19 +17,24 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
-from .inequation import *
-from .model import *
-import samples.utils as utils
+import core.utils as utils
+from core.inequation import *
+from core.model import *
 
-class ModelerSMT(object):
+class ReachabilitySMT(object):
         
-    def __init__ (self, pimc):
+    # Only support one label as given property
+    def __init__ (self, pimc, property):
         self.pimc = pimc
+        self.property = property
         self.boolVars = set()
         # Associates to each var its lb and ub
         # {0: {lb:0.5, ub:1}, 1: {lb:0.3, ub:0.6}}
         self.contVars = {}
         self.semiContVars = {}
+
+    def isAbsorbingState(self, state):
+        return 
 
     def addBooleanVariable(self, variable):
         assert(not(variable in self.boolVars))
@@ -39,27 +44,36 @@ class ModelerSMT(object):
         self.boolVars.add(variable)
     
     def addContinuousVariable(self, variable, lb, ub):
-        assert(not(variable in self.boolVars))
-        assert(not(variable in self.semiContVars))
-        assert(not(variable in self.contVars))
+        assert (not(variable in self.boolVars)),     "%s in %s" % (variable, self.boolVars)
+        assert (not(variable in self.semiContVars)), "%s in %s" % (variable, self.semiContVars)
+        assert (not(variable in self.contVars)),     "%s in %s" % (variable, self.contVars)
 
         self.contVars[variable] = {'lb':lb, 'ub':ub}
     
     def addSemiContinuousVariable(self, variable, lb, ub):
-        assert(not(variable in self.boolVars))
-        assert(not(variable in self.semiContVars))
-        assert(not(variable in self.contVars))
+        assert (not(variable in self.boolVars)),     "%s in %s" % (variable, self.boolVars)
+        assert (not(variable in self.semiContVars)), "%s in %s" % (variable, self.semiContVars)
+        assert (not(variable in self.contVars)),     "%s in %s" % (variable, self.contVars)
 
         self.semiContVars[variable] = {'lb':lb, 'ub':ub}
     
     def getReachabilityVariable(self, state):
         return 'r' + str(state)
 
+    def getInProbabilityVariable(self, state):
+        return 'i' + str(state)
+
+    def getOutProbabilityVariable(self, state):
+        return 'o' + str(state)
+
     def getParameterVariable(self, parameter):
         return 'p_' + parameter
 
     def getTransitionVariable(self, stateFrom, stateTo):
         return 't_' + stateFrom + '_' + stateTo
+
+    def getPropertyProbabilityVariable(self):
+        return 'prop'
 
     def declareVariables(self):
         parameters = self.pimc.getParameters()
@@ -75,7 +89,22 @@ class ModelerSMT(object):
         for s in self.pimc.getStates():
             var = self.getReachabilityVariable(s)
             self.addBooleanVariable(var)
+
+        # Out probabilities
+        for s in self.pimc.getStates():
+            var = self.getOutProbabilityVariable(s)
+            self.addContinuousVariable(var, 0., 100000000.)
         
+        # In probabilities (only for target states)
+        for s in self.pimc.getStates():
+            if self.isTargetState(s):
+                var = self.getInProbabilityVariable(s)
+                self.addContinuousVariable(var, 0., 1.)
+
+        # Variable saving the probabiliy of the checked property
+        var = self.getPropertyProbabilityVariable()
+        self.addContinuousVariable(var, 0., 1.)
+
         # Transition variables
         for s in self.pimc.getStates():
             for ss in self.pimc.getSuccessors(s):
@@ -85,6 +114,7 @@ class ModelerSMT(object):
                 ub = 1 if (inter['ub'] in parameters) else inter['ub']
                 var = self.getTransitionVariable(s, ss)
                 self.addSemiContinuousVariable(var, lb, ub)
+
 
     def bound2smt(self, bound):
         result = bound
@@ -100,38 +130,56 @@ class ModelerSMT(object):
         return result
 
     def getSumPredecessors(self, state, predecessors):
-        result = "+"
-        first = True
+        result = ""
+        nb = 0
         for predecessor in predecessors[state]:
             if predecessor != state:
                 result += " " + self.getTransitionVariable(predecessor, state)
+                nb += 1
+
+        if nb == 0:
+            result = "0"
+        elif nb > 1:
+            result = "(+%s)" % result
         return result
 
     def getSumSuccessors(self, state, successors):
-        result = "+"
+        result = ""
+        nb = 0
         for successor in successors[state]:
             result += " " + self.getTransitionVariable(state, successor)
+            nb += 1
+
+        if nb == 0:
+            result = "0"
+        elif nb > 1:
+            result = "(+%s)" % result
         return result
+
+    def isTargetState(self, state):
+        return self.property in self.pimc.getLabel(state)
 
     def declareConstraints(self):
         predecessors = self.pimc.getAllStatesPredecessors()
         successors = self.pimc.getAllStatesSuccessors()
         initialState = self.pimc.getInitialState()
         parameters = self.pimc.getParameters()
+        targets = []
 
         self.constraints = []
         self.constraints.append("(assert (= %s true))\n" % (self.getReachabilityVariable(initialState)))
 
-        for s in sorted(self.pimc.getStates()):
+        for s in sorted(self.pimc.getStates(), key=int):
             sumPredecessors = self.getSumPredecessors(s, predecessors)
             sumSuccessors = self.getSumSuccessors(s, successors)
             if s != initialState:
-                self.constraints.append("(assert (= (= %s false) (= (%s) 0)))\n" % 
+                self.constraints.append("(assert (= (= %s false) (= %s 0)))\n" % 
                     (self.getReachabilityVariable(s), sumPredecessors))
-            self.constraints.append("(assert (= (= %s false) (= (%s) 0)))\n" % 
+            self.constraints.append("(assert (= (= %s false) (= %s 0)))\n" % 
                 (self.getReachabilityVariable(s), sumSuccessors))
-            self.constraints.append("(assert (= (= %s true) (= (%s) 1)))\n" % 
+            self.constraints.append("(assert (= (= %s true) (= %s 1)))\n" % 
                 (self.getReachabilityVariable(s), sumSuccessors))
+
             for ss in successors[s]:
                 inter = self.pimc.getTransition(s, ss)
                 lb = self.bound2smt(inter['lb'])
@@ -146,24 +194,80 @@ class ModelerSMT(object):
                     self.constraints.append("(assert (=> (= %s true) (>= %s %s)))\n" % 
                         (self.getReachabilityVariable(s), ub, self.getTransitionVariable(s, ss)))
 
+            # Out probability
+            if s == initialState:
+                self.constraints.append("(assert (= %s 1))\n" % self.getOutProbabilityVariable(s))
+            else:
+                self.constraints.append("(assert (=> (= %s false) (= %s 0)))\n" % 
+                    (self.getReachabilityVariable(s), self.getOutProbabilityVariable(s)))
+                selfLoop = False
+                outProbabilities = ""
+                nb = 0
+                for ss in predecessors[s]:
+                    if ss == s:
+                        selfLoop = True
+                    elif not(self.isTargetState(s)):
+                        outProbabilities += " (* %s %s)" % (self.getOutProbabilityVariable(ss), self.getTransitionVariable(ss, s))
+                        nb += 1
+                if nb == 0:
+                    outProbabilities = "0"
+                elif nb > 1:
+                    outProbabilities = "(+%s)" % outProbabilities
+
+                if selfLoop:
+                    self.constraints.append("(assert (=> (= %s 1) (= %s 1)))\n" % 
+                        (self.getTransitionVariable(s, s), self.getOutProbabilityVariable(s)))
+                    self.constraints.append("(assert (=> (< %s 1) (= %s (/ %s (- 1 %s)))))\n" % 
+                        (self.getTransitionVariable(s, s),
+                         self.getOutProbabilityVariable(s), outProbabilities, self.getTransitionVariable(s, s)))
+                else:
+                    self.constraints.append("(assert (= %s %s))\n" % 
+                        (self.getOutProbabilityVariable(s), outProbabilities)) 
+
+            # In probability (reach) for target states
+            if self.isTargetState(s):
+                if s == initialState:
+                    inProbabilities = "1"
+                else:
+                    inProbabilities = ""
+                    nb = 0
+                    for ss in predecessors[s]:
+                        if ss != s:
+                            inProbabilities += " (* %s %s)" % (self.getOutProbabilityVariable(ss), self.getTransitionVariable(ss, s))
+                            nb += 1
+                    if nb > 1:
+                        inProbabilities = "(+%s)" % inProbabilities
+
+                variable = self.getInProbabilityVariable(s)
+                self.constraints.append("(assert (= %s %s))\n" % (variable, inProbabilities))
+                targets.append(variable)
+
+        # Sum cylinders probabilities
+        sumCylinder = " ".join(targets)
+        if len(targets) == 0:
+            sumCylinder = "0"
+        if len(targets) > 1:
+            sumCylinder = "(+ %s)" % sumCylinder
+        self.constraints.append("(assert (= %s %s))\n" % (self.getPropertyProbabilityVariable(), sumCylinder))
+
 
     def printModel(self, fileName):
         file = open(fileName, 'w')
-        file.write('(set-logic QF_LRA)\n')
+        #file.write('(set-logic QF_LRA)\n')
 
         variables = []
-        for var in self.contVars:
+        for var in sorted(self.contVars):
             variables.append(var)
             file.write('(declare-fun %s () Real)\n' % var)
             lb = float(self.contVars[var]['lb'])
             ub = float(self.contVars[var]['ub'])
             file.write('(assert (and (>= %s %f) (<= %s %f)))\n' % (var, lb, var, ub))
 
-        for var in self.boolVars:
+        for var in sorted(self.boolVars):
             variables.append(var)
             file.write('(declare-fun %s () Bool)\n' % (var))
 
-        for var in self.semiContVars:
+        for var in sorted(self.semiContVars):
             variables.append(var)
             file.write('(declare-fun %s () Real)\n' % var)
             file.write('(assert (and (>= %s 0) (<= %s 1)))\n' % (var, var))
@@ -190,8 +294,8 @@ class ModelerSMT(object):
         return results
  
     @staticmethod
-    def consistency (pimc, fileName):
-        model = ModelerSMT(pimc)
+    def reachability (pimc, fileName):
+        model = ReachabilitySMT(pimc, property='"observe0Greater1"')
         model.declareVariables()
         model.declareConstraints()
         model.printModel(fileName)

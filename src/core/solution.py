@@ -15,6 +15,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import utils
+import re
 
 class Solution(object):
     
@@ -22,18 +24,35 @@ class Solution(object):
         self.values = {}
 
     def setValue(self, variable, value):
+        value = value.strip()
+        if value == "1.0":
+            value = "1"
+        elif value == "0.0":
+            value = "0"
+
+        fraction = utils.smtFraction2fraction(value)
+        if fraction:
+            value = str(fraction)
+
         self.values[variable] = value
 
     def getValue(self, stateFrom, stateTo=None):
         if not(stateTo):
-            variable = stateFrom
+            variable = 'r' + stateFrom
         else:
-            variable = 't_' + str(stateFrom) + ',' + str(stateTo)
+            variable = 't_' + str(stateFrom) + '_' + str(stateTo)
 
         if variable in self.values:
             return self.values[variable]
         else:
             return None
+
+    def isReachable(self, state):
+        variable = 'r' + state
+        if variable in self.values:
+            value = self.values[variable]
+            return (value == "true" or value == "1")
+        return False
 
     def __str__(self):
         return str(self.values)
@@ -44,13 +63,19 @@ class Solution(object):
     def parse(file):
         solution = Solution()
         f = open(file, 'r')
-
-        for line in f:
-            variable = line.split('=')
-            solution.setValue(variable[0].strip(), variable[1].strip())
+        solution.parseFormatSmtlib(f)
         return solution
+        #for line in f:
+        #    variable = line.split('=')
+        #    solution.setValue(variable[0].strip(), variable[1].strip())
+        #return solution
 
-    @staticmethod
-    def export (pimc, file):
-        dot = DotModeler(pimc, file)
+
+    def parseFormatSmtlib(self, file):
+        content = file.read()
+        valuations = [e[1:-1] for e in re.findall(r'\([a-zA-Z0-9_]+ [^\)]+\)', content)]
+        for valuation in valuations:
+            iSeparator = valuation.index(" ")
+            self.setValue(valuation[:iSeparator], valuation[iSeparator:])
+
 

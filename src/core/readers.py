@@ -16,18 +16,27 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .networks import MC, IMC, PIMC
+from core.networks import MC, IMC, PIMC
+import utils
 
 class TxtFileReader(object):
-                   
     @staticmethod
-    def read(file, useFractions=False):   
+    def readFile(file, useFractions=False):                   
         f = open(file, 'r')
-        lines = f.readlines()        
+        lines = f.readlines()    
+        return TxtFileReader.read(lines, useFractions)
+
+    @staticmethod
+    def readString(content, useFractions=False):   
+        lines = content.split('\n')
+        return TxtFileReader.read(lines, useFractions)
+
+    @staticmethod
+    def read(lines, useFractions=False):
+        lines = utils.removeBlanckLines(lines)
         line = 0
         while (lines[line][0] == '#'):
             line += 1
-
 
         # Type: [MC|IMC|PIMC]
         networkType = TxtFileReader.getValueAfterKey(lines[line], 'Type: ').upper()
@@ -51,7 +60,7 @@ class TxtFileReader(object):
             line += 1
             result.setParameters([x.strip() for x in lines[line:line+nbParameters]])
             line += nbParameters
-        
+
         # Labels: 
         # <node>:<label> (one per line)
         line += 1
@@ -66,7 +75,7 @@ class TxtFileReader(object):
         if len(labels.keys()) != nbNodes:
             raise Exception("%d nodes declared and %d instanciated with labels." % (nbNodes, len(labels.keys())))
         line += nbNodes + 1
-        
+
         # Edges:
         # <fromNode> -> <toNode> | <lowerBound> ; <upperBound> (one per line)
         for l in lines[line:]:
@@ -75,7 +84,7 @@ class TxtFileReader(object):
             nodeFrom = "".join(nodes[0].split())
             nodeTo = "".join(nodes[1].split())
             result.setProbabilityFromString(nodeFrom, nodeTo, elts[1])
-        
+
         return networkType, result
 
     @staticmethod

@@ -1,0 +1,100 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+# PIMC_PYLIB: the Python Library for Parametric Interval Markov Chains Verification
+# Copyright (C) 2016 Ecole des Mines de Nantes
+# Author: Anicet BART
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# PRISM file to pIMC file
+import json
+import argparse
+import itertools
+import os
+import subprocess
+import core.utils as utils
+from core.readers import *
+from core.reducer import *
+from model.prism_modeler import *
+
+parser = argparse.ArgumentParser(
+	description="PIMC_PYLIB LTL Property [version 0.9]. Copyright (c) 2016 Ecole des Mines de Nantes", 
+	epilog="More details at https://github.com/anicet-bart/pimc_pylib", formatter_class=argparse.RawTextHelpFormatter)
+parser.add_argument('c', metavar='<generation_file>', help='Configuration file')
+parser.add_argument('-o', metavar='<output_directory>', help='output directory', default="")
+args = parser.parse_args()
+
+
+def execute(cmd):
+	process = subprocess.Popen(cmd, shell=True)
+	result = process.wait()
+
+
+# Check PRISM installation
+PIMC_PYLIB_DIRECTORY = utils.getPimcPylibDirectory()
+PRISM = utils.getPrismExe()
+TRA2PIMC = os.path.dirname(os.path.realpath(__file__)) + "/core/mc2pimc.py"
+
+outdir = args.o
+if outdir == "":
+    outdir = os.path.normpath(PIMC_PYLIB_DIRECTORY + os.sep + os.path.join("data", "ltl_property", "outputs", "tmp")) + os.sep
+
+# Read generation configuration file
+configFile = open(args.c, 'r')
+config = json.load(configFile)
+configFile.close()
+expectedKeys = ['pimcFile', 'ltlFile', 'parameters', 'proba2expr']
+for key in expectedKeys:
+	if not(key in config):
+		print("Please check your generation configuration file %s" % (args.c))
+		print('Missing key "%s".' % (key))
+		exit(2)
+
+
+# Inputs
+pimcFile = config['pimcFile']
+ltlFile  = config['ltlFile']
+uid2expr = config['proba2expr']
+parameters = config['parameters']
+expr2uid = {uid2expr[proba]: proba for proba in uid2expr}
+
+# .tra and .lab files generated from the PIMC and given to PRISM to compuct the graph product with the LTL formula
+uidFile = os.path.splitext(os.path.basename(pimcFile))[0]
+uidFile = os.path.join(outdir, uidFile)
+labFile = uidFile + ".lab"
+traFile = uidFile + ".tra"
+staFile = uidFile + ".sta"
+
+# Load the PIMC and generate .tra and .lab file
+networkType, pimc = TxtFileReader.readFile(pimcFile, useFractions=False)
+PrismModeler.export(pimc, expr2uid, traFile, labFile, staFile)
+
+# Use the .tra and .lab with the LTL file to the generate with PRISM the graph product
+cmd = "%s -importmodel %s.tra,lab,sta %s -dtmc -exportmodel %s_dtmc.tra,lab,sta -exportprodtrans %s_ltl.tra -exportprodstates %s_ltl.sta -exporttarget %s_ltl.lab" % (PRISM, uidFile, ltlFile, uidFile,uidFile,uidFile,uidFile)
+print(cmd)
+execute(cmd)
+
+# Compile .tra and .lab into PIMC
+pimcFileLtl = "%s_ltl.pimc" % uidFile
+cmd = "python %s %s_ltl.tra -o %s -params \"%s\" -lab %s_ltl.lab -replace '%s'" % (TRA2PIMC, uidFile, pimcFileLtl, parameters, uidFile, json.dumps(uid2expr))
+print(cmd)
+execute(cmd)
+
+# Compute reduced PIMC
+pimcFileLtlReduced = "%s_ltl_reduced.pimc" % uidFile
+networkType, pimc2 = TxtFileReader.readFile(pimcFileLtl, useFractions=False)
+Reducer.keepOnlyStatesReachingLabel(pimc2, '"target"')
+Reducer.removeStraightStates(pimc2)
+pimc2.export(pimcFileLtlReduced)
+print("pIMC reduced exported in file '%s'" % pimcFileLtlReduced)

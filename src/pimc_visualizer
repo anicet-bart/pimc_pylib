@@ -1,0 +1,72 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+# PIMC_PYLIB: the Python Library for Parametric Interval Markov Chains Verification
+# Copyright (C) 2016 Ecole des Mines de Nantes
+# Author: Anicet BART
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from core.readers import *
+from core.solution import *
+from core.smt_translater import *
+from model.dot_modeler import *
+from model.milp_modeler import *
+from model.smt_reachability import *
+from model.smt_modeler import *
+
+import os
+import sys
+import argparse
+import core.utils as utils
+
+sys.setrecursionlimit(100000)
+parser = argparse.ArgumentParser(
+  description="PIMC_PYLIB Visualizer [version 0.9]. Copyright (c) 2016 Ecole des Mines de Nantes",
+  epilog="More details at https://github.com/anicet-bart/pimc_pylib", formatter_class=argparse.RawTextHelpFormatter)
+parser.add_argument('-i', metavar='<pimc_file>', help='input file containing the pIMC', required=True)
+parser.add_argument('-o', metavar='<output_file>', help='output file for printing the dot file', required=True)
+
+group = parser.add_mutually_exclusive_group()
+group.add_argument("-r", action = "store_true", dest='useFractions', help="use rational numbers")
+group.add_argument("-d", action = "store_false", dest='useFractions', help="use double/float numbers")
+
+parser.add_argument('-sol', metavar='<labelling_file>', help='solution file for annotating the .dot file', default="")
+args = parser.parse_args()
+
+file = args.i
+solFile = ""    #args.sol
+
+# Loadding pIMC
+utils.printTitle("Loading pIMC")
+utils.printInfo("input_pimc", file)
+utils.printInfo("input_numbers", "rationals" if args.useFractions else "float")
+networkType, pimc2 = TxtFileReader.readFile(file, useFractions=args.useFractions)
+infos = pimc2.getInfos()
+infosOrder = ['#states','#transitions','initialState',
+              '#intervals','#parameters','#paramInBounds',
+              'ratioIntervals','ratioParamInBounds']
+for key in infosOrder:
+    utils.printInfo(key, infos[key])
+
+
+# Dot Modelling
+utils.printTitle("Dot Modelling")
+utils.printInfo("output_format", "dot")
+utils.printInfo("output_file", args.o)
+
+solution = None
+if args.sol:
+  solution = Solution.parse(args.sol)
+
+DotModeler.export(pimc2, args.o, solution)

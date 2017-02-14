@@ -17,18 +17,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from samples.readers import *
-from samples.dot_modeler import *
-from samples.solution import *
-from samples.milp_modeler import *
-from samples.smt_modeler import *
-from samples.smt_translater import *
-from samples.smt_reachability import *
+import core.utils as utils
+from core.readers import *
+from core.solution import *
+from core.smt_translater import *
+from model.dot_modeler import *
+from model.milp_modeler import *
+from model.smt_modeler import *
+from model.smt_reachability import *
 
 import os
 import sys
 import argparse
-import samples.utils
 
 import signal
 def sig_handler(signum, frame):
@@ -62,7 +62,7 @@ group.add_argument("-cons",  action = "store_false", dest='reachability', help="
 parser.add_argument('-semiCont', help='use semi-continuous variables', action="store_true", default=False)
 
 #parser.add_argument("-dot", action = "store_true", help="perform .dot  double/float numbers", default=False)
-#parser.add_argument('-sol', metavar='<labelling_file>', help='solution input file', default="")
+parser.add_argument('-sol', metavar='<labelling_file>', help='solution file for annotating the .dot file', default="")
 args = parser.parse_args()
 
 file = args.i
@@ -72,7 +72,7 @@ solFile = ""    #args.sol
 utils.printTitle("Loading pIMC")
 utils.printInfo("input_pimc", file)
 utils.printInfo("input_numbers", "rationals" if args.useFractions else "float")
-networkType, pimc2 = TxtFileReader.read(file, useFractions=args.useFractions)
+networkType, pimc2 = TxtFileReader.readFile(file, useFractions=args.useFractions)
 infos = pimc2.getInfos()
 infosOrder = ['#states','#transitions','initialState',
               '#intervals','#parameters','#paramInBounds',
@@ -110,7 +110,12 @@ if args.reachability or args.vmcai16 or args.smt or args.milp:
 if args.dot:
   utils.printInfo("output_format", "dot")
   utils.printInfo("output_file", args.o)
-  DotModeler.export(pimc2, args.o)
+
+  solution = None
+  if args.sol:
+    solution = Solution.parse(args.sol)
+
+  DotModeler.export(pimc2, args.o, solution)
 
 utils.exit(0)
 

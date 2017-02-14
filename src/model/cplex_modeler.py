@@ -17,8 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import cplex
-from inequation import *
-from model import *
+from core.inequation import *
+from core.model import *
 
 class CplexModeler(object):
     

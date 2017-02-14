@@ -23,6 +23,7 @@ import resource
 import threading
 import fractions
 import re
+import subprocess
 
 def isInstance(variable, clazz):
     if (not isinstance(variable, clazz)):
@@ -34,6 +35,9 @@ def isType(variable, tyype):
         
 def isList(variable):
     return type(variable) is list
+
+def isDict(variable):
+	return type(variable) is dict
 
 def toList(variable):
     return variable if isList(variable) else [variable]
@@ -60,9 +64,9 @@ def getConfigIni():
     configFile.close()
     return result
 
-def printTitle(message, size=70):
+def printTitle(message, size=70, stdout=sys.stdout):
     title = "=" * int(((size - len(message) - 2)/2)) + " " + message + " "
-    print(title + (size - len(title)) * "=")
+    stdout.write((title + (size - len(title)) * "=") + '\n')
 
 def printInfo(name, value, size=25):
     print("c %s %s" % (name.ljust(size), value))
@@ -166,3 +170,71 @@ def multireplace(string, replacements):
 
     # For each match, look up the new string in the replacements
     return regexp.sub(lambda match: replacements[match.group(0)], string)
+
+
+def string2integer(string):
+	try:
+		values = string.split(".")
+		# No decimal part
+		if len(values) == 1:
+			return int(string)
+
+		# Test if decimal part equals to zero
+		elif int(values[1]) == 0:
+			return int(values[0])
+
+		# More than one "." in the string representation
+		else:
+			return None
+
+	# Catch errors when converting to int
+	except:
+		return None
+
+def smtFraction2fraction(string):
+	try:
+		# removes '(' and ')' and characters and splits the string 
+		values = re.sub('[\(\)]', '', string).split()
+		return str(fractions.Fraction(string2integer(values[1]), string2integer(values[2])))
+	except:
+		if len(values) == 3:
+			raise
+		return None
+
+def smtFraction2string(string):
+	return str(smtFraction2fraction(string))
+
+
+def removeBlanckLines(lines):
+	result = []
+	for line in lines:
+		tmp = line.strip()
+		if tmp:
+			result.append(tmp)
+	return result
+
+
+def getPrismExe():
+	PIMC_PYLIB_DIRECTORY = getPimcPylibDirectory()
+	try:
+		configIni = getConfigIni()
+		if not("prism" in configIni):
+			raise Exception("Missing key 'prism' in config.ini.")
+		if not(os.path.isfile(configIni['prism'])):
+			raise Exception("PRISM executable '%s' not found." % (configIni['prism']))
+	except Exception as e:
+		print("Please check your configuration file config.ini at %s" % (getConfigIniLocation()))
+		print(e)
+		exit(1)
+	return configIni['prism']
+
+def getTra2pimcExe():
+	return os.path.dirname(os.path.realpath(__file__)) + "/mc2pimc.py"
+
+
+def getTmpDir():
+	return os.path.dirname(os.path.realpath(__file__)) + "/tmp"
+
+def execute(cmd, stdout=None, stderr=None):
+	process = subprocess.Popen(cmd, shell=True, stdout=stdout, stderr=stderr)
+	result = process.wait()

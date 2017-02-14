@@ -1,0 +1,8 @@
+{
+	"pimcFile": "data/ltl_property/inputs/competing_goals.pimc",
+	"ltlFile" : "data/ltl_property/inputs/competing_goals.pctl",
+	"parameters": ["x"],
+	"proba2expr": {
+		"0.112233": "x", "0.887767": "(- 1 x)"
+	}
+}

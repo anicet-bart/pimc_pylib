@@ -41,7 +41,24 @@ class MC(object):
      
     def getStates(self):
         return self.states
-     
+    
+    def getStatesWithLabel(self, label):
+        result = set()
+        for s in self.getStates():
+            if self.getLabel(s) == label:
+                result.add(s)
+        return result
+
+    def removeStates(self, states):
+        for s in states:
+            self.removeState(s)
+
+    def removeState(self, state):
+        assert(state != self.initialState)
+        self.states.remove(state)
+        del self.labels[state]
+        del self.transitionFunction[state]
+
     def nbStates(self):
         return len(self.states)
      
@@ -52,18 +69,40 @@ class MC(object):
             return set()
      
     def setLabels(self, labels):
-        utils.isType(labels, dict)            
+        utils.isType(labels, dict)       
         self.labels = labels
         
     def getLabel(self, state):
         assert(state in self.labels)
         return self.labels[state]
 
+    def getLabels(self, state):
+        assert(state in self.labels)
+        if self.labels[state]:
+            return self.labels[state].split(" ")       
+        else:
+            return []
+
     def getTransition(self, stateFrom, stateTo):
         if stateFrom in self.transitionFunction and stateTo in self.transitionFunction[stateFrom]:
             return self.transitionFunction[stateFrom][stateTo]
         return None     
-     
+
+    def removeTransition(self, stateFrom, stateTo):
+        del self.transitionFunction[stateFrom][stateTo]
+
+    def setAbsorbingStates(self, states):
+        for s in states:
+            self.setAbsorbingState(s)
+
+    def setAbsorbingState(self, state):
+        self.transitionFunction[state] = {}
+        self.setProbability(state, state, "1")
+
+    def isAbsorbingState(self, state):
+        return (state in self.transitionFunction) and \
+            (state in self.transitionFunction[state]) and (len(self.transitionFunction[state]) == 1)
+
     def setProbability(self, nodeFrom, nodeTo, probability):
         if not (nodeFrom in self.states):
             raise Exception("Undeclared state '%s'." % (nodeFrom))
@@ -125,6 +164,34 @@ class MC(object):
             result[state].add(state)
         return result
 
+    def getChildren(self, states):
+        result = set()
+        stack = set()
+        stack.update(states)
+        successors = self.getAllStatesSuccessors()
+
+        while stack:
+            state = stack.pop()
+            for successor in successors[state]:
+                if not(successor in result):
+                    result.add(successor)
+                    stack.add(successor)
+        return result
+
+    def getAncestors(self, states):
+        result = set()
+        stack = set()
+        stack.update(states)
+        predecessors = self.getAllStatesPredecessors()
+
+        while stack:
+            state = stack.pop()
+            for predecessor in predecessors[state]:
+                if not(predecessor in result):
+                    result.add(predecessor)
+                    stack.add(predecessor)
+        return result
+
     def guessInitialState(self):
         reachableStates = self.getAllReachableStates()
         result = None
@@ -135,6 +202,7 @@ class MC(object):
                 result = state
                 nbReachable = len(reachableStates[state])
         return result, nbReachable
+
 
 class IMC(MC):
     def __init__(self):
@@ -170,6 +238,9 @@ class PIMC(IMC):
             return interval['ub']
         return None
         
+    def nbParameters(self):
+        return len(self.parameters)
+
     def setParameters(self, parameters):
         if (type(parameters) == set):
             self.parameters = parameters
@@ -208,6 +279,15 @@ class PIMC(IMC):
             upperBound = copy(lowerBound)
         self.setProbability(nodeFrom, nodeTo, {'lb': lowerBound, 'ub':upperBound})
         
+    def getTransitionAsString(self, nodeFrom, nodeTo):
+        probability = self.getTransition(nodeFrom, nodeTo)
+        if not(utils.isDict(probability)):
+            return probability
+        elif probability['lb'] == probability['ub']:
+            return probability['lb']
+        else:
+            return "%s ; %s" % (probability['lb'], probability['ub'])
+
     def isVariable(self, bound):
         return bound in self.parameters
 
@@ -243,3 +323,22 @@ class PIMC(IMC):
         result['#paramInBounds'] = nbParamsInBounds
         result['initialState'] = self.getInitialState()
         return result
+
+
+    def export(self, file="/dev/stdout"):
+        states = sorted(self.getStates(), key=int)
+        with open(file, 'w') as f:
+            f.write('Type: pIMC\n')
+            f.write('Nodes: %s\n' % (self.nbStates()))
+            f.write('Parameters: %s\n' % (self.nbParameters()))
+            for param in self.getParameters():
+                f.write('%s\n' % (param))
+            f.write('Labels:\n')
+            f.write('%s : %s\n' % (self.initialState, self.getLabel(self.initialState)))
+            for state in states:
+                if state != self.initialState:
+                    f.write('%s : %s\n' % (state, self.getLabel(state)))
+            f.write('Edges:\n')
+            for s in states:
+                for ss in self.getSuccessors(s):
+                    f.write("%s->%s | %s\n" % (s, ss, self.getTransitionAsString(s, ss)))

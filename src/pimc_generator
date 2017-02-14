@@ -23,7 +23,7 @@ import argparse
 import itertools
 import os
 import subprocess
-import samples.utils as utils
+import core.utils as utils
 
 parser = argparse.ArgumentParser(
 	description="PIMC_PYLIB Generator [version 0.9]. Copyright (c) 2016 Ecole des Mines de Nantes", 
@@ -52,7 +52,7 @@ except Exception as e:
 	exit(1)
 
 PRISM = configIni['prism']
-TRA2PIMC = os.path.dirname(os.path.realpath(__file__)) + "/samples/mc2pimc.py"
+TRA2PIMC = os.path.dirname(os.path.realpath(__file__)) + "/core/mc2pimc.py"
 outdir = args.o
 if outdir == "":
     outdir = os.path.normpath(PIMC_PYLIB_DIRECTORY + os.sep + os.path.join("data", "generator", "outputs", "tmp")) + os.sep
@@ -116,8 +116,9 @@ for prismFile in prismFiles:
 
 		consts  = ["-const %s=%s" % (constantNames[i], constants[i]) for i in range(len(constants))]
 		params  = ["-const %s=%s" % (p, uid) for p, uid in param2uid.iteritems()]
-		cmd     = "%s %s %s %s -exportmodel %s" % (PRISM, prismFile, " ".join(consts), " ".join(params), trafile + ",lab")
+		cmd     = "%s %s %s %s -exportmodel %s" % (PRISM, prismFile, " ".join(consts), " ".join(params), trafile + ",lab,sta")
 		utils.printTitle("[begin] Running PRISM")
+		print(cmd)
 		execute(cmd)
 		utils.printTitle("[end] Running PRISM")
 

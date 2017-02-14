@@ -1,0 +1,13 @@
+{
+	"prismFile"      : "data/generator/inputs/brp_pmc.pm",
+	"prismConstants": {
+		"N": 2, 
+		"MAX": 1
+	},
+	"parameters": ["pL", "pK"],
+
+	"proba2param": {
+		"0.112233": "pL", "0.887767": "(- 1 pL)",
+		"0.123123": "pK", "0.876877": "(- 1 pK)"
+	}
+}

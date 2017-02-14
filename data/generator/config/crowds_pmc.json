@@ -1,0 +1,14 @@
+{
+	"prismFile"      : "data/generator/inputs/crowds_pmc.pm",
+	"prismConstants": {
+		"CrowdSize" : [3],
+		"TotalRuns" : [3]
+	},
+
+	"parameters": ["PF", "badC"],
+	"proba2param": {
+		"0.112233": "PF", "0.887767": "(- 1 PF)",
+		"0.123123": "badC", "0.876877": "(- 1 badC)",
+		"0.333333333333": "(/ 1 3)"
+	}
+}
