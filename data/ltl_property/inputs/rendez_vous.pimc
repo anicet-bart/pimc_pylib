@@ -1,22 +1,27 @@
+#nbStates          5
+#nbTransitions     8
+#probaInterval     0.0
+#probaParameter    0.0
+#nbIntervals       0
+#nbParameters      1
+#nbParamInBounds   2
+#initialState      0
 Type: pIMC
-Nodes: 6
+Nodes: 5
 Parameters: 1
-x
+p
 Labels:
-0 : 
-1 : 
-2 : 
-3 : 
-4 : meet 
-5 :
+0 : "init"
+1 : "search"
+2 : "wait"
+3 : "a"
+4 : "b"
 Edges:
-0->1 | (- 1 x)
-0->2 | x
-1->3 | (- 1 x)
-1->4 | x
-2->4 | (- 1 x)
-2->5 | x
-3->3 | 1
-4->4 | 1
-5->3 | 0.333333334
-5->4 | 0.666666666
+0->1 | p
+0->2 | (- 1 p)
+1->3 | (/ 1 3)
+1->4 | (/ 2 3)
+2->3 | (/ 1 3)
+2->4 | (/ 2 3)
+3->0 | 1.0
+4->0 | 1.0

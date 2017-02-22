@@ -43,22 +43,33 @@ class Reducer(object):
     @staticmethod
     def removeStraightStates(pimc):
         toRemove = set()
+        removed = set()
         # Search for straight states (non absorbing states with only one successor)
         for s in pimc.getStates():
             if len(pimc.getSuccessors(s)) == 1 and not(pimc.isAbsorbingState(s)):
                 toRemove.add(s)
-
+        print("toRemove: %s" % toRemove)
         for s in toRemove:
             # The successors of "s" become the successors of its successor "ss"
             ss = next(iter(pimc.getSuccessors(s)))
+
             pimc.removeTransition(s, ss)
             for sss in pimc.getSuccessors(ss):
-                pimc.setProbability(s, sss, pimc.getTransition(ss, sss))
-            pimc.removeState(ss)
+                # If self loop (ss, ss) then self set self loop (s, s)
+                if sss == ss:
+                    pimc.setProbability(s, s, pimc.getTransition(ss, ss))
+                # Otherwise move transition (ss, sss) to (s, sss)
+                else:
+                    pimc.setProbability(s, sss, pimc.getTransition(ss, sss))
+                pimc.removeTransition(ss, sss)
+            removed.add(ss)
 
         # Recursive call until fix point
         if toRemove:
             Reducer.removeStraightStates(pimc)
+        for s in removed:
+            pimc.removeState(s)
+
 
 
     @staticmethod

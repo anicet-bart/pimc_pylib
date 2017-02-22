@@ -27,11 +27,11 @@ class PrismModeler(object):
         self.pimc = pimc
         self.expr2uid = expr2uid
 
+        PrismModeler.normalizeLabels(pimc)
         self.label2id = PrismModeler.indexLabels(pimc)
-        self.label2name = PrismModeler.normalizeLabels(self.label2id)
-
         self.statesOrder = sorted(self.pimc.getStates(), key=int)
-        self.labelOrder = sorted(self.label2id, key=(lambda l: int(self.label2id[l])))
+        self.labelOrder = sorted(self.label2id, key=(lambda l: (int(self.label2id[l]) != 0, l)))
+        print(self.labelOrder)
 
     def exportTra(self, file):
         """ Outputs the transition matrix of the given PIMC into the PRISM format (.tra format).
@@ -49,6 +49,7 @@ class PrismModeler(object):
                 assert(expr['lb'] == expr['ub'])
                 expr = expr['lb'].strip()
                 expr = self.expr2uid[expr] if (expr in self.expr2uid) else expr
+                expr = "1" if expr == "1.0" else expr
                 file.write("%s %s %s\n" % (s, ss, expr))
 
     def exportLab(self, file):
@@ -69,21 +70,22 @@ class PrismModeler(object):
         3: 1 2
         """
         for l in self.labelOrder:
-            file.write("%s=\"%s\" " % (self.label2id[l], self.label2name[l]))
+            file.write("%s=\"%s\" " % (self.label2id[l], l))
 
-        # Print labelling
+        # Print labelling only for states with labels
         initialState = self.pimc.getInitialState()
         for s in self.statesOrder:
-            file.write("\n%s:" % s)
-            idLabels = []
-            if s == initialState:
-            	idLabels.append(self.label2id["init"])
-            for l in self.pimc.getLabels(s):
-            	if l != "init":
-                	idLabels.append(self.label2id[l])	
+            if s == initialState or self.pimc.getLabels(s):
+                file.write("\n%s:" % s)
+                idLabels = []
+                if s == initialState:
+            	   idLabels.append(self.label2id["init"])
+                for l in self.pimc.getLabels(s):
+            	   if l != "init":
+                	   idLabels.append(self.label2id[l])	
 
-            for idl in idLabels:
-            	file.write(" %s" % idl)
+                for idl in idLabels:
+            	   file.write(" %s" % idl)
 
 
     def exportSta(self, file):
@@ -93,7 +95,7 @@ class PrismModeler(object):
         1:(true,false)
         2:(false,true)
         """
-        file.write("(%s)" % ",".join([self.label2name[l] for l in self.labelOrder]))
+        file.write("(%s)" % ",".join(self.labelOrder))
 
         # Print rewards
         initialState = self.pimc.getInitialState()
@@ -118,19 +120,24 @@ class PrismModeler(object):
             for l in pimc.getLabels(s):
                 if not(l in result):
                     result[l] = len(result)
+        print(result)
         return result     
+
+
+    @staticmethod
+    def normalizeLabel(label):
+        return label.replace(" ", "_").replace('"', "").strip()
 
     # [TODO] Check unicity normalized names
     @staticmethod
-    def normalizeLabels(labels):
-        """ Associate to each label a normalized name (i.e. PRISM compatible)
-        Returns a dictionnary associating to each label a PRISM compatible unique name
+    def normalizeLabels(pimc):
+        """ Normalizes all the labels present in the given PIMC
         """
-        result = {}
-        for l in labels:
-            result[l] = l.replace(" ", "_").replace('"', "").strip()
-        return result
-
+        for s in pimc.getStates():
+            labels = set()
+            for l in pimc.getLabels(s):
+                labels.add(PrismModeler.normalizeLabel(l))
+            pimc.setLabel(s, " ".join([PrismModeler.normalizeLabel(l) for l in labels]))
 
     @staticmethod
     def export (pimc, expr2uid={}, traFile="/dev/stdout", labFile="/dev/stdout", staFile="/dev/stdout"):

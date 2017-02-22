@@ -55,17 +55,13 @@ class DotModeler(object):
         self.out.write('}\n')
 
     def addNodes(self):
-        for state in self.pimc.getStates():
-            label = None
-            reachable = False
-            if self.solution:
-                reachable = self.solution.isReachable(state)
-            if not(label):
-                label = self.pimc.getLabel(state)
-            self.addNode(state, label, reachable)
+        self.addNode(self.pimc.getInitialState())
+        for state in sorted(self.pimc.getStates(), key=int):
+            self.addNode(state)
 
-    def addNode(self, state, label, reachable=False):
-        label = label.replace('"', '\\"')
+    def addNode(self, state):
+        label = self.pimc.getLabel(state).replace('"', '\\"')
+        reachable = self.solution.isReachable(state) if self.solution else False
         fillcolor = DotModeler.COLOR_ACTIVE if reachable else DotModeler.COLOR_INACTIVE
         arrowcolor = DotModeler.COLOR_ACTIVE_DARK if reachable else DotModeler.COLOR_INACTIVE_DARK
         self.out.write('\tSTATE%s[label="%s" xlabel="%s" fillcolor="%s" color="%s" shape="circle"];\n' % (state, state, label, fillcolor, arrowcolor))

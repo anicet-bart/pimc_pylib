@@ -54,6 +54,7 @@ class MC(object):
             self.removeState(s)
 
     def removeState(self, state):
+        print("remove: %s" % state)
         assert(state != self.initialState)
         self.states.remove(state)
         del self.labels[state]
@@ -67,7 +68,11 @@ class MC(object):
             return set(self.transitionFunction[state].keys())
         else:
             return set()
-     
+    
+    def setLabel(self, state, label):
+        assert(state in self.labels)
+        self.labels[state] = label
+
     def setLabels(self, labels):
         utils.isType(labels, dict)       
         self.labels = labels
@@ -264,16 +269,16 @@ class PIMC(IMC):
         # Lower bound
         lowerBound = bounds[0].strip()
         if not(self.isParametric(lowerBound)):
-            lowerBound = "".join(lowerBound.split()) # removes spaces for fractions
             if self.useFractions:
+                lowerBound = "".join(lowerBound.split()) # removes spaces for fractions
                 lowerBound = fractions.Fraction(lowerBound)
             
         # Upper bound
         if len(bounds) > 1:
             upperBound = bounds[1].strip()
             if not(self.isParametric(upperBound)):
-                upperBound = "".join(upperBound.split()) # removes spaces for fractions
                 if self.useFractions:
+                    upperBound = "".join(upperBound.split()) # removes spaces for fractions
                     upperBound = fractions.Fraction(upperBound)
         else:
             upperBound = copy(lowerBound)

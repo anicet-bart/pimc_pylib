@@ -35,12 +35,14 @@ parser.add_argument('-ri',      help='probability to transform a probability to 
 parser.add_argument('-rp',      help='probability to transform a bound of an interval to a parameter (value between 0. and 1.)', type=float, default='0.')
 args = parser.parse_args()
 
+# Parameters
 fileName = args.file
 file = open(fileName, 'r')
-out = open(args.o, 'w')
 
-# Parameters
-nbStates, nbTransitions = (int(nb) for nb in file.readline().split())
+sizeInfo = file.readline().split()
+if len(sizeInfo) != 2:
+	raise Exception("The given PRISM model does not describe a deterministic process.")
+nbStates, nbTransitions = (int(nb) for nb in sizeInfo)
 labelingFile        = args.label
 parameters          = utils.toList(ast.literal_eval(args.params))
 substitutions       = json.loads(args.replace)
@@ -49,7 +51,7 @@ percentIntervals    = args.ri if (0 <= args.ri and args.ri <= 1) else 0
 percentParametrics  = args.rp if (0 <= args.rp and args.rp <= 1) else 0
 nbIntervals         = 0
 nbParamsInIntervals = 0
-
+out                 = open(args.o, 'w')
 
 # Get labels from labeling file. Example labeling file content (5 states and 3 labels)
 # Remark: some states may have no label
@@ -94,19 +96,14 @@ def getStates(fileName):
 
 
 # Generate interval from a MC transition probability
-def generateInterval(value):
+def generateInterval(value, parameters):
 	global nbIntervals, nbParamsInIntervals
 
 	if value in substitutions:
-		if "/" in substitutions[value]:
-			fraction = utils.smtFraction2fraction(substitutions[value])
-			if not(fraction):
-				print("Incorrect expression: expected format (/ a b) and given '%s'" % substitutions[value])
-				raise
-			else:
-				return str(fraction)
-
-		nbParamsInIntervals += 1
+		for p in parameters:
+			if p in substitutions[value]:
+				nbParamsInIntervals += 1
+				break
 		return substitutions[value]
 
 	value = float(value)
@@ -146,7 +143,7 @@ def getTransitionsWithParametricIntervals(fileName):
 		value = {}
 		value['stateFrom'] = tokens[0]
 		value['stateTo'] = tokens[1]
-		value['probabilities'] = generateInterval(tokens[2])
+		value['probabilities'] = generateInterval(tokens[2], parameters)
 		transitions.append(value)
 	file.close()
 	return transitions

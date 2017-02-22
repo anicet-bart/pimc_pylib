@@ -94,7 +94,7 @@ execute(cmd)
 # Compute reduced PIMC
 pimcFileLtlReduced = "%s_ltl_reduced.pimc" % uidFile
 networkType, pimc2 = TxtFileReader.readFile(pimcFileLtl, useFractions=False)
-Reducer.keepOnlyStatesReachingLabel(pimc2, '"target"')
-Reducer.removeStraightStates(pimc2)
+#Reducer.keepOnlyStatesReachingLabel(pimc2, '"target"')
+#Reducer.removeStraightStates(pimc2)
 pimc2.export(pimcFileLtlReduced)
 print("pIMC reduced exported in file '%s'" % pimcFileLtlReduced)
