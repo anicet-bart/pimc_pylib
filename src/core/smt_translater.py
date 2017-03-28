@@ -179,9 +179,7 @@ class SmtTranslater(object):
         return results
 
     @staticmethod
-    def consistencyVMCAI16 (pimc, fileName):
-        modeler = ModelerVMCAI16()
-        model = modeler.consistency(pimc)
+    def consistencyVMCAI16 (pimc, model, fileName):
         smt = SmtTranslater(pimc)
         for var in model['contVars']:
             smt.addContinuousVariable(var, 0, 1)

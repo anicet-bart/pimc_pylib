@@ -77,7 +77,7 @@ elif 'nbParameters' in config:
 	for nbParams in config['nbParameters']:
 		prefix = ""
 		parameters = []
-		for i in range(0, config['nbParameters']):
+		for i in range(0, nbParams):
 			if i % 26 == 0 and i > 0:
 				prefix += "a"
 			parameters.append(prefix + chr(ord('a') + (i % 26)))

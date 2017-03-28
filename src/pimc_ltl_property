@@ -80,21 +80,26 @@ staFile = uidFile + ".sta"
 networkType, pimc = TxtFileReader.readFile(pimcFile, useFractions=False)
 PrismModeler.export(pimc, expr2uid, traFile, labFile, staFile)
 
-# Use the .tra and .lab with the LTL file to the generate with PRISM the graph product
-cmd = "%s -importmodel %s.tra,lab,sta %s -dtmc -exportmodel %s_dtmc.tra,lab,sta -exportprodtrans %s_ltl.tra -exportprodstates %s_ltl.sta -exporttarget %s_ltl.lab" % (PRISM, uidFile, ltlFile, uidFile,uidFile,uidFile,uidFile)
-print(cmd)
-execute(cmd)
+if False:
+	# Use the .tra and .lab with the LTL file to the generate with PRISM the graph product
+	cmd = "%s -importmodel %s.tra,lab,sta %s -dtmc -exportmodel %s_dtmc.tra,lab,sta -exportprodtrans %s_ltl.tra -exportprodstates %s_ltl.sta -exporttarget %s_ltl.lab" % (PRISM, uidFile, ltlFile, uidFile,uidFile,uidFile,uidFile)
+	print(cmd)
+	execute(cmd)
 
-# Compile .tra and .lab into PIMC
-pimcFileLtl = "%s_ltl.pimc" % uidFile
-cmd = "python %s %s_ltl.tra -o %s -params \"%s\" -lab %s_ltl.lab -replace '%s'" % (TRA2PIMC, uidFile, pimcFileLtl, parameters, uidFile, json.dumps(uid2expr))
-print(cmd)
-execute(cmd)
+	# Compile .tra and .lab into PIMC
+	pimcFileLtl = "%s_ltl.pimc" % uidFile
+	cmd = "python %s %s_ltl.tra -o %s -params \"%s\" -lab %s_ltl.lab -replace '%s'" % (TRA2PIMC, uidFile, pimcFileLtl, parameters, uidFile, json.dumps(uid2expr))
+	print(cmd)
+	execute(cmd)
+
+	networkType, pimc2 = TxtFileReader.readFile(pimcFileLtl, useFractions=False)
+else:
+	pimc2 = pimc
 
 # Compute reduced PIMC
 pimcFileLtlReduced = "%s_ltl_reduced.pimc" % uidFile
-networkType, pimc2 = TxtFileReader.readFile(pimcFileLtl, useFractions=False)
-#Reducer.keepOnlyStatesReachingLabel(pimc2, '"target"')
-#Reducer.removeStraightStates(pimc2)
+Reducer.keepOnlyStatesReachingLabel(pimc2, 'target')
+Reducer.removeStraightStates(pimc2)
+Reducer.simplifyExpressionsOnTransitions(pimc2)
 pimc2.export(pimcFileLtlReduced)
 print("pIMC reduced exported in file '%s'" % pimcFileLtlReduced)

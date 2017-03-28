@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from core.networks import MC, IMC, PIMC
-import utils
+import core.utils as utils
 
 class TxtFileReader(object):
     @staticmethod

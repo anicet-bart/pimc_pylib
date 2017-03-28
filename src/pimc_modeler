@@ -17,6 +17,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import sys
+sys.settrace
+
+
 import core.utils as utils
 from core.readers import *
 from core.solution import *
@@ -25,10 +29,11 @@ from model.dot_modeler import *
 from model.milp_modeler import *
 from model.smt_modeler import *
 from model.smt_reachability import *
+from model.vmcai16_modeler import *
 
 import os
-import sys
 import argparse
+
 
 import signal
 def sig_handler(signum, frame):
@@ -56,8 +61,9 @@ group.add_argument("-vmcai16", action = "store_true", default=False, help="Exist
 group.add_argument("-dot", action = "store_true", default=False, help="Output the pIMC in .dot format")
 
 group = parser.add_mutually_exclusive_group()
-group.add_argument("-reach", action = "store_true", dest='reachability', help="model reachability problem")
-group.add_argument("-cons",  action = "store_false", dest='reachability', help="model consistency problem")
+group.add_argument("-qualReach", action = "store_true", dest='qualReach', default=False, help="model qualitative reachability problem")
+group.add_argument("-quantReach", action = "store_true", dest='quantReach', default=False, help="model quantitative reachability problem")
+group.add_argument("-cons",  action = "store_false", dest='consistency', default=False, help="model consistency problem")
 
 parser.add_argument('-semiCont', help='use semi-continuous variables', action="store_true", default=False)
 
@@ -84,18 +90,22 @@ for key in infosOrder:
 utils.printTitle("Modelling")
 
 # Verification Modelling
-if args.reachability or args.vmcai16 or args.smt or args.milp:
+if args.qualReach or args.quantReach or args.consistency or args.vmcai16 or args.smt or args.milp:
   utils.printInfo("output_format", "smt" if (args.vmcai16 or args.smt) else "milp")
   utils.printInfo("output_numbers", "float")
   utils.printInfo("output_model", args.o)
 
   utils.startPrintResourceUsage()
-  if args.reachability:
-    model = ReachabilitySMT.reachability(pimc2, args.o)
+  if args.qualReach:
+    model = ReachabilitySMT.qualitativeReachability(pimc2, args.o)
+  elif args.quantReach:
+    model = ReachabilitySMT.quantitativeReachability(pimc2, args.o)
   elif args.vmcai16:
-    model = SmtTranslater.consistencyVMCAI16(pimc2, args.o)
+    modeler = ModelerVMCAI16()
+    model = modeler.consistency(pimc2)
+    model = SmtTranslater.consistencyVMCAI16(pimc2, model, args.o)
   elif args.smt:
-    model = ModelerSMT.consistency(pimc2, args.o)
+    model = ReachabilitySMT.consistency(pimc2, args.o)
   elif args.milp:
     model = ModelerMILP.consistency(pimc2, args.semiCont, args.o)
   utils.endPrintResourceUsage()

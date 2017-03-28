@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
+from fractions import Fraction
 import core.utils as utils
 from core.inequation import *
 from core.model import *
@@ -24,12 +25,15 @@ from core.model import *
 class ReachabilitySMT(object):
         
     # Only support one label as given property
-    def __init__ (self, pimc, property):
+    def __init__ (self, pimc, property, reachability=True, quantitative=True):
         self.pimc = pimc
         self.property = property
+        self.reachability = reachability
+        self.quantitative = quantitative
         self.boolVars = set()
         # Associates to each var its lb and ub
         # {0: {lb:0.5, ub:1}, 1: {lb:0.3, ub:0.6}}
+        self.intVars = {}
         self.contVars = {}
         self.semiContVars = {}
 
@@ -37,15 +41,25 @@ class ReachabilitySMT(object):
         return 
 
     def addBooleanVariable(self, variable):
-        assert(not(variable in self.boolVars))
-        assert(not(variable in self.semiContVars))
-        assert(not(variable in self.contVars))
+        assert (not(variable in self.boolVars)),     "%s in %s" % (variable, self.boolVars)
+        assert (not(variable in self.semiContVars)), "%s in %s" % (variable, self.semiContVars)
+        assert (not(variable in self.intVars)),      "%s in %s" % (variable, self.intVars)
+        assert (not(variable in self.contVars)),     "%s in %s" % (variable, self.contVars)
 
         self.boolVars.add(variable)
     
+    def addIntegerVariable(self, variable, lb, ub):
+        assert (not(variable in self.boolVars)),     "%s in %s" % (variable, self.boolVars)
+        assert (not(variable in self.semiContVars)), "%s in %s" % (variable, self.semiContVars)
+        assert (not(variable in self.intVars)),      "%s in %s" % (variable, self.intVars)
+        assert (not(variable in self.contVars)),     "%s in %s" % (variable, self.contVars)
+
+        self.intVars[variable] = {'lb':lb, 'ub':ub}
+
     def addContinuousVariable(self, variable, lb, ub):
         assert (not(variable in self.boolVars)),     "%s in %s" % (variable, self.boolVars)
         assert (not(variable in self.semiContVars)), "%s in %s" % (variable, self.semiContVars)
+        assert (not(variable in self.intVars)),      "%s in %s" % (variable, self.intVars)
         assert (not(variable in self.contVars)),     "%s in %s" % (variable, self.contVars)
 
         self.contVars[variable] = {'lb':lb, 'ub':ub}
@@ -53,27 +67,39 @@ class ReachabilitySMT(object):
     def addSemiContinuousVariable(self, variable, lb, ub):
         assert (not(variable in self.boolVars)),     "%s in %s" % (variable, self.boolVars)
         assert (not(variable in self.semiContVars)), "%s in %s" % (variable, self.semiContVars)
+        assert (not(variable in self.intVars)),      "%s in %s" % (variable, self.intVars)
         assert (not(variable in self.contVars)),     "%s in %s" % (variable, self.contVars)
 
         self.semiContVars[variable] = {'lb':lb, 'ub':ub}
     
-    def getReachabilityVariable(self, state):
-        return 'r' + str(state)
+    def getVariableStateQualitativeReachability(self, state):
+        """ Variable indicating if the given state is reachable from the initial state. """
+        return 'ri_' + str(state)
 
-    def getInProbabilityVariable(self, state):
-        return 'i' + str(state)
+    def getVariableStateQuantitativeReachability(self, state):
+        """ Variable indicating the probability to reach the target states from the given state. """
+        return 'rq_' + str(state)
 
-    def getOutProbabilityVariable(self, state):
-        return 'o' + str(state)
+    def getVariableStateCanReachTarget(self, state):
+        """ Variable indicating if the given state can reach at least one target state. """
+        return 'rt_' + str(state)
+
+    def getVariablePathLengthFromInitialState(self, state):
+    	""" Variable indicatng the length of an existing path from the initial state to the given state """
+    	return 'li_' + str(state)
+        	
+    def getVariablePathLengthToTargetState(self, state):
+    	""" Variable indicatng the length of an existing path from the given state to a target state """
+        return 'lt_' + str(state)
 
     def getParameterVariable(self, parameter):
+        """ Variable indicating the value for the given parameter. """
         return 'p_' + parameter
 
     def getTransitionVariable(self, stateFrom, stateTo):
+        """ Variable indicating the probability given to the transition from stateFrom to stateTo. """
         return 't_' + stateFrom + '_' + stateTo
 
-    def getPropertyProbabilityVariable(self):
-        return 'prop'
 
     def declareVariables(self):
         parameters = self.pimc.getParameters()
@@ -85,25 +111,10 @@ class ReachabilitySMT(object):
             self.param2variable[p] = var
             self.addContinuousVariable(var, 0., 1.)
 
-        # Reachability variables
-        for s in self.pimc.getStates():
-            var = self.getReachabilityVariable(s)
+        # Existential consistency
+        for s in self.pimc.getStates():        
+            var = self.getVariableStateQualitativeReachability(s)
             self.addBooleanVariable(var)
-
-        # Out probabilities
-        for s in self.pimc.getStates():
-            var = self.getOutProbabilityVariable(s)
-            self.addContinuousVariable(var, 0., 100000000.)
-        
-        # In probabilities (only for target states)
-        for s in self.pimc.getStates():
-            if self.isTargetState(s):
-                var = self.getInProbabilityVariable(s)
-                self.addContinuousVariable(var, 0., 1.)
-
-        # Variable saving the probabiliy of the checked property
-        var = self.getPropertyProbabilityVariable()
-        self.addContinuousVariable(var, 0., 1.)
 
         # Transition variables
         for s in self.pimc.getStates():
@@ -114,6 +125,25 @@ class ReachabilitySMT(object):
                 ub = 1 if (inter['ub'] in parameters) else inter['ub']
                 var = self.getTransitionVariable(s, ss)
                 self.addSemiContinuousVariable(var, lb, ub)
+
+        if self.reachability:
+            for s in self.pimc.getStates():
+                # Qualitative reachability variables
+                var = self.getVariablePathLengthFromInitialState(s)
+                #self.addIntegerVariable(var, 0, self.pimc.nbStates())
+                self.addContinuousVariable(var, 0, self.pimc.nbStates())
+
+                # Quantitative reachability variables
+                if self.quantitative:
+                    var = self.getVariablePathLengthToTargetState(s)
+                    #self.addIntegerVariable(var, 0, self.pimc.nbStates())
+                    self.addContinuousVariable(var, 0, self.pimc.nbStates())
+
+                    var = self.getVariableStateCanReachTarget(s)
+                    self.addBooleanVariable(var)
+
+                    var = self.getVariableStateQuantitativeReachability(s)
+                    self.addContinuousVariable(var, 0., 1.)
 
 
     def bound2smt(self, bound):
@@ -157,103 +187,184 @@ class ReachabilitySMT(object):
         return result
 
     def isTargetState(self, state):
-        return self.property in self.pimc.getLabel(state)
+    	return self.property in self.pimc.getLabel(state)
+
+
+    def declareConstraintsExistentialConsistency(self, state):
+        sumPredecessors = self.getSumPredecessors(state, self.predecessors)
+        sumSuccessors = self.getSumSuccessors(state, self.successors)
+
+        if state == self.pimc.getInitialState():
+            # Constraint (1) from Mec
+            self.constraints.append("(assert (= %s true))\n" % 
+                (self.getVariableStateQualitativeReachability(state)))
+        else:
+            # Constraint (2) from Mec
+            self.constraints.append("(assert (= (= %s false) (= %s 0)))\n" % 
+                (self.getVariableStateQualitativeReachability(state), sumPredecessors))
+
+        # Constraint (3) from Mec
+        self.constraints.append("(assert (= (= %s false) (= %s 0)))\n" % 
+            (self.getVariableStateQualitativeReachability(state), sumSuccessors))
+
+        # Constraint (4) from Mec
+        self.constraints.append("(assert (= (= %s true) (= %s 1)))\n" % 
+            (self.getVariableStateQualitativeReachability(state), sumSuccessors))
+
+        # Constraints (5) from Mec
+        for s in self.successors[state]:
+            inter = self.pimc.getTransition(state, s)
+            lb = self.bound2smt(inter['lb'])
+            ub = self.bound2smt(inter['ub'])
+            
+            # P(state, s) is a singleton
+            if lb == ub:
+                self.constraints.append("(assert (=> (= %s true) (= %s %s)))\n" % 
+                    (self.getVariableStateQualitativeReachability(state), lb, self.getTransitionVariable(state, s)))
+
+            # P(state, s) is an interval
+            else:
+                self.constraints.append("(assert (=> (= %s true) (<= %s %s)))\n" % 
+                    (self.getVariableStateQualitativeReachability(state), lb, self.getTransitionVariable(state, s)))
+                self.constraints.append("(assert (=> (= %s true) (>= %s %s)))\n" % 
+                    (self.getVariableStateQualitativeReachability(state), ub, self.getTransitionVariable(state, s)))
+
+
+    def declareConstraintsExistentialReachability(self, state):
+        if state == self.pimc.getInitialState():
+            # Constraint (1) from Mer
+            self.constraints.append("(assert (= %s 1))\n" % 
+                (self.getVariablePathLengthFromInitialState(state)))
+        else:
+            # Constraint (2) from Mer
+            self.constraints.append("(assert (not (= %s 1)))\n" % 
+                (self.getVariablePathLengthFromInitialState(state)))
+
+            # Constraint (2') from Mer
+            self.constraints.append("(assert (=> (< %s 1) (= %s 0)))\n" % 
+                (self.getVariablePathLengthFromInitialState(state), self.getVariablePathLengthFromInitialState(state)))
+
+            # Prepare disjunction and conjunction for constraints (3) and (4)
+            disjunction = []
+            conjunction = []
+            for s in self.predecessors[state]:
+                if s != state:
+                    disjunction.append("(and (= %s (+ %s 1)) (> %s 0))" % 
+                        (self.getVariablePathLengthFromInitialState(state), self.getVariablePathLengthFromInitialState(s), self.getTransitionVariable(s, state)))
+                    conjunction.append("(or (= %s 0) (= %s 0))" % 
+                        (self.getVariablePathLengthFromInitialState(s), self.getTransitionVariable(s, state)))
+            if len(conjunction) == 0:
+                resultConjunction = "true"
+                resultDisjunction = "false"
+            elif len(conjunction) == 1:
+                resultConjunction = conjunction[0]
+                resultDisjunction = disjunction[0]
+            else:
+                resultConjunction = "(and %s)" % (" ".join(conjunction))
+                resultDisjunction = "(or %s)" % (" ".join(disjunction))
+
+        	# Constraint (3) from Mer
+            self.constraints.append("(assert (=> (> %s 1) %s))\n" % 
+                (self.getVariablePathLengthFromInitialState(state), resultDisjunction))
+
+            # Constraint (4) from Mer
+            self.constraints.append("(assert (= (= %s 0) %s))\n" % 
+                (self.getVariablePathLengthFromInitialState(state), resultConjunction))
+
+        # Constraint (5) from Mer
+        self.constraints.append("(assert (= (= %s false) (= %s 0)))\n" % 
+            (self.getVariableStateQualitativeReachability(state), self.getVariablePathLengthFromInitialState(state)))
+
+
+    def declareConstraintsExistentialReachabilityPrime(self, state):
+        if self.isTargetState(state):
+            # Constraint (1) from MerPrime
+            self.constraints.append("(assert (= %s 1))\n" % 
+                (self.getVariablePathLengthToTargetState(state)))
+        else:
+            # Constraint (2) from MerPrime
+            self.constraints.append("(assert (not (= %s 1)))\n" % 
+                (self.getVariablePathLengthToTargetState(state)))
+
+            # Constraint (2') from Mer
+            self.constraints.append("(assert (=> (< %s 1) (= %s 0)))\n" % 
+                (self.getVariablePathLengthToTargetState(state), self.getVariablePathLengthToTargetState(state)))
+
+            # Prepare disjunction and conjunction for constraints (3) and (4)
+            disjunction = []
+            conjunction = []
+            for s in self.successors[state]:
+                if s != state:
+                    disjunction.append("(and (= %s (+ %s 1)) (> %s 0))" % 
+                        (self.getVariablePathLengthToTargetState(state), self.getVariablePathLengthToTargetState(s), self.getTransitionVariable(state, s)))
+                    conjunction.append("(or (= %s 0) (= %s 0))" % 
+                        (self.getVariablePathLengthToTargetState(s), self.getTransitionVariable(state, s)))
+            if len(conjunction) == 0:
+                resultConjunction = "true"
+                resultDisjunction = "false"
+            elif len(conjunction) == 1:
+                resultConjunction = conjunction[0]
+                resultDisjunction = disjunction[0]
+            else:
+                resultConjunction = "(and %s)" % (" ".join(conjunction))
+                resultDisjunction = "(or %s)" % (" ".join(disjunction))
+
+        	# Constraint (3) from MerPrime
+            self.constraints.append("(assert (=> (> %s 1) %s))\n" % 
+                (self.getVariablePathLengthToTargetState(state), resultDisjunction))
+
+            # Constraint (4) from MerPrime
+            self.constraints.append("(assert (= (= %s 0) %s))\n" % 
+                (self.getVariablePathLengthToTargetState(state), resultConjunction))
+
+        # Constraint (5) from MerPrime
+        self.constraints.append("(assert (= (= %s true) (and (= %s true) (not (= %s 0)))))\n" % 
+            (self.getVariableStateCanReachTarget(state), 
+                self.getVariableStateQualitativeReachability(state), self.getVariablePathLengthToTargetState(state)))
+
+
+
+
+
+    def declareConstraintsExistentialReachabilityExtended(self, state):
+        # Constraint (1) from MerExtended
+        self.constraints.append("(assert (=> (= %s false) (= %s 0)))\n" % 
+            (self.getVariableStateCanReachTarget(state), self.getVariableStateQuantitativeReachability(state)))
+
+        # Constraint (2) from MerExtended
+        if self.isTargetState(state):
+            self.constraints.append("(assert (=> (= %s true) (= %s 1)))\n" % 
+                (self.getVariableStateCanReachTarget(state), self.getVariableStateQuantitativeReachability(state)))
+
+        # Constraint (3) from MerExtended
+        else:
+            addition = []
+            for s in self.successors[state]:
+                addition.append("(* %s %s)" % (self.getVariableStateQuantitativeReachability(s), self.getTransitionVariable(state, s)))
+            result = addition[0] if (len(addition) == 1) else "(+ %s)" % (" ".join(addition))
+            self.constraints.append("(assert (=> (= %s true) (= %s %s)))\n" % 
+                (self.getVariableStateCanReachTarget(state), self.getVariableStateQuantitativeReachability(state), result))
+
 
     def declareConstraints(self):
-        predecessors = self.pimc.getAllStatesPredecessors()
-        successors = self.pimc.getAllStatesSuccessors()
-        initialState = self.pimc.getInitialState()
-        parameters = self.pimc.getParameters()
-        targets = []
-
+        self.predecessors = self.pimc.getAllStatesPredecessors()
+        self.successors = self.pimc.getAllStatesSuccessors()
         self.constraints = []
-        self.constraints.append("(assert (= %s true))\n" % (self.getReachabilityVariable(initialState)))
+
+        print("Initial state: %s" % self.pimc.getInitialState())
 
         for s in sorted(self.pimc.getStates(), key=int):
-            sumPredecessors = self.getSumPredecessors(s, predecessors)
-            sumSuccessors = self.getSumSuccessors(s, successors)
-            if s != initialState:
-                self.constraints.append("(assert (= (= %s false) (= %s 0)))\n" % 
-                    (self.getReachabilityVariable(s), sumPredecessors))
-            self.constraints.append("(assert (= (= %s false) (= %s 0)))\n" % 
-                (self.getReachabilityVariable(s), sumSuccessors))
-            self.constraints.append("(assert (= (= %s true) (= %s 1)))\n" % 
-                (self.getReachabilityVariable(s), sumSuccessors))
-
-            for ss in successors[s]:
-                inter = self.pimc.getTransition(s, ss)
-                lb = self.bound2smt(inter['lb'])
-                ub = self.bound2smt(inter['ub'])
-
-                if lb == ub:
-                    self.constraints.append("(assert (=> (= %s true) (= %s %s)))\n" % 
-                        (self.getReachabilityVariable(s), lb, self.getTransitionVariable(s, ss)))
-                else:
-                    self.constraints.append("(assert (=> (= %s true) (<= %s %s)))\n" % 
-                        (self.getReachabilityVariable(s), lb, self.getTransitionVariable(s, ss)))
-                    self.constraints.append("(assert (=> (= %s true) (>= %s %s)))\n" % 
-                        (self.getReachabilityVariable(s), ub, self.getTransitionVariable(s, ss)))
-
-            # Out probability
-            if s == initialState:
-                self.constraints.append("(assert (= %s 1))\n" % self.getOutProbabilityVariable(s))
-            else:
-                self.constraints.append("(assert (=> (= %s false) (= %s 0)))\n" % 
-                    (self.getReachabilityVariable(s), self.getOutProbabilityVariable(s)))
-                selfLoop = False
-                outProbabilities = ""
-                nb = 0
-                for ss in predecessors[s]:
-                    if ss == s:
-                        selfLoop = True
-                    elif not(self.isTargetState(s)):
-                        outProbabilities += " (* %s %s)" % (self.getOutProbabilityVariable(ss), self.getTransitionVariable(ss, s))
-                        nb += 1
-                if nb == 0:
-                    outProbabilities = "0"
-                elif nb > 1:
-                    outProbabilities = "(+%s)" % outProbabilities
-
-                if selfLoop:
-                    self.constraints.append("(assert (=> (= %s 1) (= %s 1)))\n" % 
-                        (self.getTransitionVariable(s, s), self.getOutProbabilityVariable(s)))
-                    self.constraints.append("(assert (=> (< %s 1) (= %s (/ %s (- 1 %s)))))\n" % 
-                        (self.getTransitionVariable(s, s),
-                         self.getOutProbabilityVariable(s), outProbabilities, self.getTransitionVariable(s, s)))
-                else:
-                    self.constraints.append("(assert (= %s %s))\n" % 
-                        (self.getOutProbabilityVariable(s), outProbabilities)) 
-
-            # In probability (reach) for target states
-            if self.isTargetState(s):
-                if s == initialState:
-                    inProbabilities = "1"
-                else:
-                    inProbabilities = ""
-                    nb = 0
-                    for ss in predecessors[s]:
-                        if ss != s:
-                            inProbabilities += " (* %s %s)" % (self.getOutProbabilityVariable(ss), self.getTransitionVariable(ss, s))
-                            nb += 1
-                    if nb > 1:
-                        inProbabilities = "(+%s)" % inProbabilities
-
-                variable = self.getInProbabilityVariable(s)
-                self.constraints.append("(assert (= %s %s))\n" % (variable, inProbabilities))
-                targets.append(variable)
-
-        # Sum cylinders probabilities
-        sumCylinder = " ".join(targets)
-        if len(targets) == 0:
-            sumCylinder = "0"
-        if len(targets) > 1:
-            sumCylinder = "(+ %s)" % sumCylinder
-        self.constraints.append("(assert (= %s %s))\n" % (self.getPropertyProbabilityVariable(), sumCylinder))
-
+            self.declareConstraintsExistentialConsistency(s)
+            if self.reachability:
+                self.declareConstraintsExistentialReachability(s)
+                if self.quantitative:
+                    self.declareConstraintsExistentialReachabilityPrime(s)
+                    self.declareConstraintsExistentialReachabilityExtended(s)
 
     def printModel(self, fileName):
         file = open(fileName, 'w')
-        #file.write('(set-logic QF_LRA)\n')
+        #file.write('(set-logic QF_NIRA)\n')
+        file.write('(set-option :produce-models true)\n')
 
         variables = []
         for var in sorted(self.contVars):
@@ -272,10 +383,18 @@ class ReachabilitySMT(object):
             file.write('(declare-fun %s () Real)\n' % var)
             file.write('(assert (and (>= %s 0) (<= %s 1)))\n' % (var, var))
 
+        for var in sorted(self.intVars):
+            variables.append(var)
+            file.write('(declare-const %s Int)\n' % var)
+            lb = float(self.intVars[var]['lb'])
+            ub = float(self.intVars[var]['ub'])
+            file.write('(assert (and (>= %s %d) (<= %s %d)))\n' % (var, lb, var, ub))
+
         for constraint in self.constraints:
             file.write('%s' % (constraint))
 
         file.write('(check-sat)\n')
+        #file.write('(check-sat-using (then simplify solve-eqs smt))\n')
         file.write('(get-value (%s))\n' % (" ".join(variables)))
         file.write('(get-info :all-statistics)\n')
 
@@ -294,10 +413,25 @@ class ReachabilitySMT(object):
         return results
  
     @staticmethod
-    def reachability (pimc, fileName):
-        model = ReachabilitySMT(pimc, property='"observe0Greater1"')
+    def consistency (pimc, fileName):
+        model = ReachabilitySMT(pimc, property='target', reachability=False, quantitative=False)
         model.declareVariables()
         model.declareConstraints()
         model.printModel(fileName)
         return model
-        
+
+    @staticmethod
+    def qualitativeReachability (pimc, fileName):
+        model = ReachabilitySMT(pimc, property='target', reachability=True, quantitative=False)
+        model.declareVariables()
+        model.declareConstraints()
+        model.printModel(fileName)
+        return model
+
+    @staticmethod
+    def quantitativeReachability (pimc, fileName):
+        model = ReachabilitySMT(pimc, property='target', reachability=True, quantitative=True)
+        model.declareVariables()
+        model.declareConstraints()
+        model.printModel(fileName)
+        return model

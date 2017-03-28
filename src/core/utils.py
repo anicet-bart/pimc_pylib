@@ -148,8 +148,14 @@ def scientificNotation2smtNumber(strNumber):
 	return result		
 	
 
-def string2smtNumber(str):
-	return scientificNotation2smtNumber(str)
+def string2smtNumber(strNumber):
+	tokens = strNumber.split(" ")
+	for i in range(len(tokens)):
+		token = tokens[i]
+		# Check if it is a number (possibly starting with '-')
+		if token[0].isdigit() or (len(token) > 1 and tokens[0] == '-'and tokens[1].isdigit()):
+			tokens[i] = scientificNotation2smtNumber(token)
+	return " ".join(tokens)
 
 
 # Source: https://gist.github.com/bgusach/a967e0587d6e01e889fd1d776c5f3729

@@ -19,7 +19,6 @@
 from core.inequation import *
 from core.model import *
 
-from cStringIO import StringIO
 
 class PrismModeler(object):
 
@@ -79,13 +78,13 @@ class PrismModeler(object):
                 file.write("\n%s:" % s)
                 idLabels = []
                 if s == initialState:
-            	   idLabels.append(self.label2id["init"])
+                    idLabels.append(self.label2id["init"])
                 for l in self.pimc.getLabels(s):
-            	   if l != "init":
-                	   idLabels.append(self.label2id[l])	
+                    if l != "init":
+                        idLabels.append(self.label2id[l])	
 
                 for idl in idLabels:
-            	   file.write(" %s" % idl)
+                    file.write(" %s" % idl)
 
 
     def exportSta(self, file):

@@ -16,9 +16,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import utils
 import fractions
 from copy import copy
+
+try:
+    import core.utils as utils
+except ImportError:
+    import utils
+
 
 class MC(object):
     def __init__(self):
@@ -26,6 +31,7 @@ class MC(object):
         self.initialState = None
         self.labels = {}
         self.transitionFunction = {}
+        self.predecessors = {}
         
     def setInitialState(self, state):
         self.initialState = state
@@ -54,7 +60,6 @@ class MC(object):
             self.removeState(s)
 
     def removeState(self, state):
-        print("remove: %s" % state)
         assert(state != self.initialState)
         self.states.remove(state)
         del self.labels[state]
@@ -68,10 +73,22 @@ class MC(object):
             return set(self.transitionFunction[state].keys())
         else:
             return set()
-    
+
+    def getPredecessors(self, state):
+        if state in self.predecessors:
+            return self.predecessors[state]
+        else:
+            return set()
+
     def setLabel(self, state, label):
         assert(state in self.labels)
         self.labels[state] = label
+
+    def addLabels(self, state, labels):
+        # [TODO] utiliser Set au lieu de String pour stocket les labels
+        if not(state in self.labels):
+            self.labels[state] = ""
+        self.labels[state] += " ".join(labels)
 
     def setLabels(self, labels):
         utils.isType(labels, dict)       
@@ -95,18 +112,22 @@ class MC(object):
 
     def removeTransition(self, stateFrom, stateTo):
         del self.transitionFunction[stateFrom][stateTo]
+        self.predecessors[stateTo].remove(stateFrom)
 
     def setAbsorbingStates(self, states):
         for s in states:
             self.setAbsorbingState(s)
 
     def setAbsorbingState(self, state):
-        self.transitionFunction[state] = {}
+        for s in self.getSuccessors(state):
+            self.removeTransition(state, s)
         self.setProbability(state, state, "1")
 
     def isAbsorbingState(self, state):
-        return (state in self.transitionFunction) and \
-            (state in self.transitionFunction[state]) and (len(self.transitionFunction[state]) == 1)
+        if  (state in self.transitionFunction) and (state in self.transitionFunction[state]) and (len(self.transitionFunction[state]) == 1):
+            # TODO: not efficient
+            return state in self.transitionFunction[state].keys()
+        return False
 
     def setProbability(self, nodeFrom, nodeTo, probability):
         if not (nodeFrom in self.states):
@@ -114,9 +135,16 @@ class MC(object):
         if not (nodeTo in self.states):
             raise Exception("Undeclared state '%s'." % (nodeTo))
         
+        # Add successor relation between nodeFrom and nodeTo
         if not(nodeFrom in self.transitionFunction):
             self.transitionFunction[nodeFrom] = {}
         self.transitionFunction[nodeFrom][nodeTo] = probability
+
+        # Add predecessor relation between nodeTo and nodeFrom
+        if not(nodeTo in self.predecessors):
+            self.predecessors[nodeTo] = set()
+        self.predecessors[nodeTo].add(nodeFrom)
+
         
     def setProbabilityFromString(self, nodeFrom, nodeTo, probability):
         self.setProbability(nodeFrom, nodeTo, fractions.Fraction(probability))
@@ -140,10 +168,7 @@ class MC(object):
     def getAllStatesPredecessors(self):
         result = {state:set() for state in self.states}
         for state in self.states:
-            for successor in self.transitionFunction[state]:
-                result[successor].add(state)
-        for state in self.states:
-            result[state] = sorted(result[state])
+            result[state] = sorted(self.getPredecessors(state))
         return result
 
     def getAllStatesChildren(self):
@@ -266,6 +291,7 @@ class PIMC(IMC):
       
     def setProbabilityFromString(self, nodeFrom, nodeTo, probability):
         bounds = probability.split(';')
+        
         # Lower bound
         lowerBound = bounds[0].strip()
         if not(self.isParametric(lowerBound)):
@@ -345,5 +371,5 @@ class PIMC(IMC):
                     f.write('%s : %s\n' % (state, self.getLabel(state)))
             f.write('Edges:\n')
             for s in states:
-                for ss in self.getSuccessors(s):
+                for ss in sorted(self.getSuccessors(s), key=int):
                     f.write("%s->%s | %s\n" % (s, ss, self.getTransitionAsString(s, ss)))

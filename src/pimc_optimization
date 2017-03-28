@@ -1,0 +1,121 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+# PIMC_PYLIB: the Python Library for Parametric Interval Markov Chains Verification
+# Copyright (C) 2016 Ecole des Mines de Nantes
+# Author: Anicet BART
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import z3
+import random, fractions, argparse
+import core.utils as utils
+
+parser = argparse.ArgumentParser(
+	description="PIMC_PYLIB Optimization [version 0.9]. Copyright (c) 2016 Ecole des Mines de Nantes", 
+	epilog="More details at https://github.com/anicet-bart/pimc_pylib", formatter_class=argparse.RawTextHelpFormatter)
+parser.add_argument('i', metavar='<input_file>', help='Input file in SMTLIB2 format')
+parser.add_argument('v', metavar='<variable_to_optimize>', help='the variable to optimize')
+parser.add_argument('-p', metavar='<precision>', help='precisiong for bounding the optimal solution', default=1E-5, type=float)
+group = parser.add_mutually_exclusive_group()
+group.add_argument("-max", action = "store_true", dest='maximizing', help="maximize the variable to optimize", default=True)
+group.add_argument("-min", action = "store_false", dest='maximizing', help="minimize the variable to optimize")
+args = parser.parse_args()
+
+smtFile = args.i
+varToOptimize = args.v
+precision = args.p
+maximizing = args.maximizing
+
+s = z3.Solver()
+s.add(z3.parse_smt2_file(smtFile))
+z3VarToOptimize = z3.Real(varToOptimize)
+lb = fractions.Fraction(9,64)
+ub = fractions.Fraction(19,128)
+nbIterations = 0
+current = 0
+
+print("# input_file: %s" % smtFile)
+print("# objective : %s" % ("maximing" if maximizing else "minimizing"))
+print("# variable  : %s" % varToOptimize)
+print("# precision : %s" % precision)
+print()
+
+import signal
+def sig_handler(signum, frame):
+	print("segfault")
+	utils.startPrintResourceUsage()
+signal.signal(signal.SIGSEGV, sig_handler)
+
+# Loop until precision reached
+utils.startPrintResourceUsage()
+while (abs(lb - ub) > precision):
+	nbIterations += 1
+
+	# Store solver configuration
+	s.push()
+
+	# Dichomotic search seems to be more efficient than random search
+	# Complexity: nbIterations \in O(log_2(1 / precision))
+#	current = random.uniform(lb, ub)
+	current = (lb + ub) / 2
+
+	# [TODO] Adapt for safe verification (i.e. rationals instead of floats)
+	# Add constraint for split search
+	if maximizing:
+		s.add(z3VarToOptimize >= current)
+		s.add(z3VarToOptimize < ub)
+	else:
+		s.add(z3VarToOptimize <= current)
+		s.add(z3VarToOptimize > lb)
+	
+	result = s.check()
+	print("%s. %f (%s) in bounds [%s, %s] -> %s" % (nbIterations, current, current, lb, ub, result))
+
+	# Sat case
+	if result == z3.sat:
+		m = s.model()
+		value = fractions.Fraction("%s" % m[z3VarToOptimize])
+		if maximizing:
+			lb = value
+		else:
+			ub = value
+
+	# Unsat case
+	elif result == z3.unsat:
+		if maximizing:
+			ub = current
+		else:
+			lb = current
+
+	# Error case
+	else:
+		raise Exception("Solver returned '%s'." % (result))
+
+	# Restore solver configuration
+	s.pop()
+utils.endPrintResourceUsage()
+
+print()
+print("# number_iterations: %s" % nbIterations)
+print("# optimal_solution : %s in [%f, %f]" % (varToOptimize, lb, ub))
+print("# instance_of_parameter_valuation_satisfying %s %s %f:" % (varToOptimize, ">=" if maximizing else "<=", lb if maximizing else ub))
+if maximizing:
+	s.add(z3VarToOptimize >= lb)
+else:
+	s.add(z3VarToOptimize <= ub)
+s.check()
+m = s.model()
+for d in m.decls():
+	if d.name().startswith('p_'):
+		print("\t%s = %s ≈ %f" % (d.name(), m[d], fractions.Fraction("%s" % m[d])))
