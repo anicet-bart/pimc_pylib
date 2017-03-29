@@ -74,7 +74,7 @@ def printInfo(name, value, size=25):
 def exit(status=0):
 	sys.stdout.flush()
 	sys.stderr.flush()
-	os._exit(1)
+	os._exit(status)
 
 printRU = False
 memoryLimit = 0
