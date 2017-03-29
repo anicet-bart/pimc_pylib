@@ -187,7 +187,9 @@ class Reducer(object):
         # Search for straight states (non absorbing states with only one successor)
         for s in pimc.getStates():
             if len(pimc.getSuccessors(s)) == 1 and not(pimc.isAbsorbingState(s)):
-                toRemove.add(s)
+                ss = next(iter(pimc.getSuccessors(s)))
+                if not(pimc.isParametricTransition(s, ss)):
+                    toRemove.add(s)
         
         for s in toRemove:
             # The successors of "s" are replaced by the successors of its successor "ss"
@@ -211,7 +213,6 @@ class Reducer(object):
                 pimc.addLabels(s, pimc.getLabels(ss))
                 removed.add(ss)
 
-        print(sorted(removed))
         # Recursive call until fix point
         if toRemove:
             Reducer.removeStraightStates(pimc)

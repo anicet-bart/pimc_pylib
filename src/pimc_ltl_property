@@ -98,8 +98,12 @@ else:
 
 # Compute reduced PIMC
 pimcFileLtlReduced = "%s_ltl_reduced.pimc" % uidFile
+nbStatesBefore = pimc.nbStates()
+print("#states_before_reduce %s" % nbStatesBefore)
 Reducer.keepOnlyStatesReachingLabel(pimc2, 'target')
 Reducer.removeStraightStates(pimc2)
 Reducer.simplifyExpressionsOnTransitions(pimc2)
+print("#states_after_reduce  %s" % pimc.nbStates())
+print("#state_removed        %s" % (nbStatesBefore - pimc.nbStates()))
 pimc2.export(pimcFileLtlReduced)
 print("pIMC reduced exported in file '%s'" % pimcFileLtlReduced)

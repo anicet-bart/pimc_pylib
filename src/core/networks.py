@@ -286,6 +286,13 @@ class PIMC(IMC):
                 return True
         return False
 
+    def isParametricTransition(self, fromState, toState):
+        transition = self.getTransition(fromState, toState)
+        if utils.isDict(transition):
+            return self.isParametric(transition['lb']) or self.isParametric(transition['ub'])
+        else:
+            return self.isParametric(transition)
+
     def getParameters(self):
         return self.parameters
       

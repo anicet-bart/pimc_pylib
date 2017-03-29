@@ -30,7 +30,6 @@ class PrismModeler(object):
         self.label2id = PrismModeler.indexLabels(pimc)
         self.statesOrder = sorted(self.pimc.getStates(), key=int)
         self.labelOrder = sorted(self.label2id, key=(lambda l: (int(self.label2id[l]) != 0, l)))
-        print(self.labelOrder)
 
     def exportTra(self, file):
         """ Outputs the transition matrix of the given PIMC into the PRISM format (.tra format).
@@ -119,7 +118,6 @@ class PrismModeler(object):
             for l in pimc.getLabels(s):
                 if not(l in result):
                     result[l] = len(result)
-        print(result)
         return result     
 
 
