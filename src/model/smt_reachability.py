@@ -274,6 +274,19 @@ class ReachabilitySMT(object):
         # Constraint (5) from Mer
         self.constraints.append("(assert (= (= %s false) (= %s 0)))\n" % 
             (self.getVariableStateQualitativeReachability(state), self.getVariablePathLengthFromInitialState(state)))
+	
+
+    def declareConstraintsExistentialReachabilityForInitialState(self):
+        targetStates = set()
+        for s in self.pimc.getStates():
+            if self.isTargetState(s):
+                targetStates.add(self.getVariableStateQualitativeReachability(s))
+        assert(len(targetStates) > 0)
+        
+        result = " ".join(targetStates)
+        if len(targetStates) > 1:
+            result = "(or %s)" % result
+        self.constraints.append("(assert (= %s true))\n" % (result))
 
 
     def declareConstraintsExistentialReachabilityPrime(self, state):
@@ -322,7 +335,10 @@ class ReachabilitySMT(object):
             (self.getVariableStateCanReachTarget(state), 
                 self.getVariableStateQualitativeReachability(state), self.getVariablePathLengthToTargetState(state)))
 
-
+        # Constraint forcing to reach a target state from the initial state
+        if state == self.pimc.getInitialState():
+		self.constraints.append("(assert (> %s 0))\n" % 
+			(self.getVariablePathLengthToTargetState(state)))
 
 
 
@@ -344,6 +360,7 @@ class ReachabilitySMT(object):
             result = addition[0] if (len(addition) == 1) else "(+ %s)" % (" ".join(addition))
             self.constraints.append("(assert (=> (= %s true) (= %s %s)))\n" % 
                 (self.getVariableStateCanReachTarget(state), self.getVariableStateQuantitativeReachability(state), result))
+	
 
 
     def declareConstraints(self):
@@ -357,6 +374,7 @@ class ReachabilitySMT(object):
             self.declareConstraintsExistentialConsistency(s)
             if self.reachability:
                 self.declareConstraintsExistentialReachability(s)
+                self.declareConstraintsExistentialReachabilityForInitialState()
                 if self.quantitative:
                     self.declareConstraintsExistentialReachabilityPrime(s)
                     self.declareConstraintsExistentialReachabilityExtended(s)
