@@ -9,6 +9,9 @@ This library allows to:
 - [PRISM](http://www.prismmodelchecker.org) is required for using PIMC generator
 - Edit the ```config.ini``` file to set the location of your PRISM executable/binary.
 
+## New!
+Check the "data/QEST17" folder and its README document to retreive informations relative to this submission.
+
 ## Run
 Launch Python scripts ```pimc_generator``` and ```pimc_modeler``` in the ```src``` folder to run respectively the PIMC generator and the PIMC modeler. Both commands have the ```-h``` option for printing help and usage.
 ```console
